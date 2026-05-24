@@ -1,0 +1,61 @@
+# Android
+build/
+.gradle/
+local.properties
+captures/
+.cxx/
+.externalNativeBuild/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Signing
+keystore.properties
+*.keystore
+*.jks
+release/
+
+# Tooling we don't use but might leak in
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code agent worktrees
+.claude/worktrees/
+
+# Downloaded test fixtures (re-fetchable via scripts/fetch-test-fixtures.sh)
+test-fixtures/
+
+# Release artifacts (rebuildable via scripts/build-release-apk.sh)
+release/
+
+# Bank-statement / financial-import files — never commit real ones.
+# Fictional sample data for tests belongs explicitly under
+# app/src/test/resources/fixtures/ (re-allowed by the negation rules below).
+*.csv
+*.qif
+*.ofx
+*.qfx
+*.mt940
+*.sta
+*.camt053
+*.xml.gpg
+
+# EBICS / Open-Banking key material, credentials, OAuth tokens — never commit.
+ebics-keys/
+*.ebics
+credentials.json
+tokens.json
+*.pem
+*.p12
+*.pfx
+
+# Re-allow fictional fixtures (and only fictional fixtures) used by tests.
+!app/src/test/resources/fixtures/**
+!app/src/androidTest/assets/fixtures/**
