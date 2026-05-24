@@ -1,6 +1,6 @@
 # ledgerboy — PSD2 direct-per-bank plugin research
 
-## Status: RESEARCH — recommendation rewritten 2026-05-24 after the connector-plugin architecture lock. Phase X (plugin runtime) lands before any of these plugins.
+## Status: RESEARCH — recommendation rewritten 2026-05-24 after the connector-plugin architecture lock + per-bank QWAC verification round 2026-05-24. Phase X (plugin runtime) lands before any of these plugins.
 
 > Parent: [`banking-research.md`](banking-research.md) · Architectural authority: [`connector-plugins.md`](connector-plugins.md) · sibling decisions: [`banking-fx.md`](banking-fx.md) · [`banking-fints.md`](banking-fints.md) · [`banking-ebics.md`](banking-ebics.md) · [`banking-import.md`](banking-import.md)
 
@@ -56,59 +56,86 @@ implementing `ConnectorPlugin` (per [`connector-plugins.md`](connector-plugins.m
 - **Privacy statement**: each plugin declares "Data leaves the device to: `https://<bank>.example/psd2/v1/...`. No third party. Bank sees: device user agent, your account access token."
 - **Network usage**: surfaces in Settings → Plugins → Network usage per [`connector-plugins.md`](connector-plugins.md) X.7.
 
-## Per-bank coverage matrix (candidates, to be confirmed during per-bank research)
+## QWAC verification matrix (2026-05-24 round)
 
-The current evidence base for "does this bank serve a personal NextGenPSD2 client without an AISP QWAC?" is mixed. The matrix below records the candidate set; each candidate becomes a per-plugin research sub-phase. Verdicts marked **verify** require hands-on investigation against the bank's PSD2 developer portal before the plugin's Phase B sub-phase opens.
+Verdict legend:
 
-### Germany (Berlin Group NextGenPSD2)
+- **OPEN** — bank publishes a personal/developer API path the account holder can use against their own account without AISP licensing or eIDAS QWAC. Adoptable for a ledgerboy plugin.
+- **CONDITIONAL** — sandbox is reachable with self-signed / test QWAC; production access requires AISP + eIDAS QWAC. Useful only for development/smoke tests; not shippable.
+- **CLOSED** — production AND meaningful sandbox both gated on eIDAS QWAC and BaFin / NCA AISP registration. Cannot ship a plugin without the user being a licensed AISP.
 
-| Bank | Dev portal | NextGenPSD2 version | Production-without-QWAC? | Verdict |
-|---|---|---|---|---|
-| Sparkasse (DSGV — shared endpoint) | <https://api.sparkasse.de/> | 1.3.6+ | verify (DSGV historically required QWAC) | **candidate, v1 short list** |
-| Volksbanken / Raiffeisenbanken (Atruvia — shared endpoint) | <https://developer.atruvia.de/> | 1.3.6+ | verify (Atruvia gates production) | **candidate** |
-| DKB | <https://developer.dkb.de/> | 1.3 | verify | **candidate, v1 short list** |
-| Commerzbank | <https://developer.commerzbank.com/> | 1.3 | verify (Commerzbank documented QWAC-only) | candidate |
-| ING-DiBa | <https://api.ing.com/openbanking/> | 1.3 | verify (ING Group's portal, pan-EU) | candidate |
-| Deutsche Bank | <https://developer.db.com/> | 1.3 | verify (db.com gates production) | candidate |
-| N26 | <https://docs.n26.com/> | 1.3 | verify | candidate |
-| Comdirect | (Commerzbank-Group portal) | 1.3 | verify | candidate |
-| Postbank | (Deutsche-Bank-Group portal) | 1.3 | verify | candidate |
+The "Berlin Group NextGenPSD2" path is **CLOSED across the board** for personal access — every German bank surveyed enforces the eIDAS QWAC requirement at the TLS layer because the XS2A PSD2 endpoint family is, by ASPSP policy, AISP-only. The personal-access path exists exclusively on banks that publish a **parallel, non-PSD2 developer API** of their own (the neo-banks: Monzo, Starling, bunq).
 
-### Pan-EU neo-banks (variants of NextGenPSD2)
+### Germany — Berlin Group NextGenPSD2 (XS2A)
 
-| Bank | Dev portal | Standard | Verdict |
-|---|---|---|---|
-| Revolut | <https://developer.revolut.com/docs/business/personal-api> | Open Banking (UK) + NextGenPSD2 (EU) | verify (Revolut Personal API exists for self-access) — **candidate** |
-| Wise | <https://api-docs.transferwise.com/> | Wise's own REST API + NextGenPSD2 in the EU | verify | candidate |
-| bunq | <https://doc.bunq.com/> | bunq's own REST + NextGenPSD2 | **likely fit** (bunq publishes a self-service developer API for own-account access) — candidate |
+| Bank | QWAC required for prod? | Personal-access w/o QWAC? | Sandbox w/o QWAC? | URL evidence | Verdict |
+|---|---|---|---|---|---|
+| Sparkasse (DSGV / Finanz Informatik) | Yes | No | No — sandbox accepts only PSD2-format QWACs | <https://www.openbanking.exchange/europe/resources/insights/psd2-xs2a-granting-access-certificates-and-registers/> | **CLOSED** |
+| Volksbanken / Raiffeisen (Atruvia AG) | Yes | No | No — Atruvia's PSD2 1.3 swagger requires eIDAS QWAC | <https://p1.xs2a-doc.atruvia.de/swagger-ui/index.html>, <https://documentation.finapi.io/access/registering-with-an-aspsp-to-gain-tpp-api-access> | **CLOSED** |
+| DKB (via finAPI XS2A) | Yes | No | No — "Third-party providers with a valid QWAC certificate can access the interface" | <https://www.dkb.de/fragen-antworten/wie-funktioniert-der-drittanbieter-zugang-gemaess-psd2>, <https://www.finapi.io/en/dkb-integrates-the-finapi-xs2a-server/> | **CLOSED** |
+| Commerzbank | Yes | No | No — "A valid QWAC Certificate for PSD2 is required to access the Sandbox and Berlin Group API" | <https://psd2.developer.commerzbank.com/howto> | **CLOSED** |
+| ING-DiBa | Yes | No | No — "eIDAS certificates can only be obtained by organizations, not by individuals"; ING devs explicitly confirm "Open Banking for personal use" is not possible | <https://developer.ing.com/openbanking/resources/get-started/psd2>, <https://villoro.com/post/ing_api> | **CLOSED** |
+| Deutsche Bank | Yes | No | No — db.com gates all XS2A endpoints on QWAC | <https://developer.db.com/products/psd2> | **CLOSED** |
+| N26 (PSD2 dedicated interface) | Yes | No | No — "QWAC Certificate must be issued from a production certificate authority"; AIS cert required for AIS endpoints | <https://support.n26.com/en-eu/security/open-banking-psd2/psd2-open-banking-for-third-party-providers>, <https://github.com/n26/psd2-tpp-docs> | **CLOSED** |
+| Comdirect (Commerzbank Group / XS2A) | Yes | No | Conditional — sandbox accepts ETSI-format test QWAC per June-2019 EBA clarification, but the certificate must still follow eIDAS QWAC shape | <https://xs2a-developer.comdirect.de/content/howto/connection> | **CLOSED** (sandbox-only test-cert tier doesn't reach prod) |
+| Postbank (Deutsche-Bank Group) | Yes | No | No | (Deutsche-Bank-Group portal, same posture as Deutsche Bank) | **CLOSED** |
 
-### UK (Open Banking Account & Transaction API v3.1)
+### Pan-EU neo-banks (non-PSD2 own-API paths exist alongside their PSD2 endpoints)
 
-| Bank | Dev portal | Standard | Verdict |
-|---|---|---|---|
-| HSBC UK | <https://develop.hsbc.com/> | Open Banking 3.1 | verify | candidate |
-| Barclays | <https://developer.barclays.com/> | Open Banking 3.1 | verify | candidate |
-| Lloyds Banking Group | <https://developer.lloydsbanking.com/> | Open Banking 3.1 | verify | candidate |
-| Monzo | <https://docs.monzo.com/> | Monzo's own OAuth REST (also Open Banking) | **likely fit** (Monzo's own API supports own-account access) — **candidate, v1 short list** |
-| Starling | <https://developer.starlingbank.com/> | Starling's own OAuth REST + Open Banking | **likely fit** (Starling Developer API exists) — candidate |
+| Bank | QWAC required for prod? | Personal-access w/o QWAC? | Sandbox w/o QWAC? | URL evidence | Verdict |
+|---|---|---|---|---|---|
+| bunq (own REST API, NOT the PSD2 path) | No, for own-account use | **Yes** — "You can use the bunq API to manage your own accounts without a license—a license is only needed if you use the API to provide services to third parties"; PSD2 path is separate | <https://doc.bunq.com/basics/authentication/api-keys>, <https://doc.bunq.com/basics/authentication/oauth>, <https://help.bunq.com/articles/bunq-developer-create-and-share-your-apps> | Yes — public sandbox + production with personal API key / OAuth | **OPEN** (requires bunq Pro or Elite paid plan — not free, but no AISP/QWAC gate) |
+| Revolut Personal | n/a — there is no developer Personal API for individuals | No | No — Revolut's developer portal only serves Revolut Business (with cert-based JWT auth) | <https://developer.revolut.com/docs/business/business-api>, <https://developer.revolut.com/docs/guides/build-banking-apps/get-started/get-access-token> | **CLOSED** (no personal-customer developer tier exists) |
+| Wise (personal API token) | No, for the limited endpoint set | Partial — personal token works for quotes/recipients/transfers; **balance & statement endpoints not available outside US/CA/AU/NZ/SG/MY** | n/a — production token | <https://docs.wise.com/guides/developer/auth-and-security/personal-api-token> | **CONDITIONAL** — token issuance is OPEN; the AIS surface ledgerboy needs (balance + transactions) is closed for EU/UK accounts |
+
+### UK — Open Banking 3.1 vs. each bank's own developer API
+
+| Bank | QWAC required for prod? | Personal-access w/o QWAC? | Sandbox w/o QWAC? | URL evidence | Verdict |
+|---|---|---|---|---|---|
+| HSBC UK (Open Banking 3.1) | Yes — full Open Banking Directory enrollment | No | Test-cert sandbox only | <https://develop.hsbc.com/knowledge-article/get-started-open-banking-apis> | **CLOSED** |
+| Barclays (Open Banking 3.1) | Yes — "Open Banking only if you have the required regulatory permission from the FCA" (AISP/PISP) | No | Test sandbox after Barclays-side identity & validation checks | <https://developer.barclays.com/open-banking> | **CLOSED** |
+| Lloyds Banking Group (Open Banking 3.1) | Yes — Read-Write APIs require Open Banking Directory registration (company-level) | No | Yes for Open-Data only (no personal account access) | <https://developer.lloydsbanking.com/prod01/lbg/get-started> | **CLOSED** |
+| Monzo (own OAuth API) | No | **Yes** — "You may only connect to your own account or those of a small set of users you explicitly allow"; explicitly designed for personal access. No AISP licensing required. | Yes — production OAuth client at developers.monzo.com | <https://docs.monzo.com/>, <https://developers.monzo.com/> | **OPEN** |
+| Starling (own OAuth API + Personal Access Token tier) | No | **Yes** — Personal Access Tokens are issued from the developer dashboard to account holders, linked to the user's own account via QR-code scan in the Starling app. Scopes include `account:read`, `balance:read`, `transaction:read`, `space:read`. | n/a — tokens hit production | <https://developer.starlingbank.com/get-started>, <https://developer.starlingbank.com/permissions>, <https://starlingbank.github.io/starling-developer-sdk/examples/authorization> | **OPEN** |
 
 ### Austria / DACH continental
 
-| Bank | Dev portal | Verdict |
-|---|---|---|
-| Erste Group (George) | <https://developers.erstegroup.com/> | verify — candidate |
-| Raiffeisen Bank International | <https://developer.rbinternational.com/> | verify — candidate |
+| Bank | QWAC required for prod? | Personal-access w/o QWAC? | URL evidence | Verdict |
+|---|---|---|---|---|
+| Erste Group (George) | Yes — Berlin Group XS2A, AISP-gated | No | <https://developers.erstegroup.com/> | **CLOSED** |
+| Raiffeisen Bank International | Yes — Berlin Group XS2A, AISP-gated | No | <https://developer.rbinternational.com/> | **CLOSED** |
 
 ### Notes on the matrix
 
-- **Verify** is the dominant status because the **only** authoritative answer is "open the bank's developer portal and read their access policy." Several banks describe an "AISP licence required" obstacle that the EBA Opinion classifies as non-conformity; banks may have updated their stance since the agent-training-data cutoff. Each per-plugin sub-phase reads the portal afresh.
-- The pivot does not commit ledgerboy to shipping every plugin in the matrix. It commits to the *plugin-per-bank model*; the actual v1 ship list is two or three candidates, picked after per-plugin verification.
+- The verdict pattern is consistent: **every ASPSP that exposes only the regulatory PSD2/XS2A path is CLOSED for personal access**. The eIDAS QWAC is issued only to legal entities (per [Reg. (EU) 910/2014 eIDAS](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32014R0910)), so a natural person cannot satisfy the transport-layer requirement, regardless of whether they are accessing their own account.
+- The [EBA Opinion EBA-Op-2020-10](https://www.eba.europa.eu/publications-and-media/press-releases/eba-publishes-opinion-obstacles-provision-third-party) flags the QWAC barrier in the context of *commercial TPPs* and clarifies that ASPSPs may not impose *additional* AISP-style checks; it does **not** carve out a "natural-person own-account direct access" path that bypasses the eIDAS QWAC at the TLS layer. The PSD2 Article 67 right of access remains a right *to direct a licensed TPP*, not a right to bring your own TLS client to the XS2A endpoint.
+- GDPR Article 15 / 20 layered on top does not change the transport requirement — it gives the data subject the right to receive a copy of their data, which most banks satisfy via their netbanking export (CAMT.053 / MT940 / CSV downloads) — i.e., the **file-import plugins**, not PSD2-direct.
+- The OPEN verdicts are **non-PSD2 paths**: bunq, Monzo, and Starling each publish their own developer API (not Berlin Group / not UK Open Banking 3.1) that explicitly contemplates account-holder use without AISP licensing. Those APIs exist in addition to the bank's PSD2 endpoints, not on top of them.
+- Wise's personal-token tier is genuinely OPEN at the auth layer, but the endpoints ledgerboy needs (balances + transactions) are scoped out for EU/UK accounts. Useful only if the user has a US / CA / AU / NZ / SG / MY Wise account.
 
-## Realistic v1 scope
+## Realistic v1 scope (post-verification)
 
-- **v1 ships at most two PSD2 plugins** chosen from the verified-fit set. Likely picks: the user's primary bank + one second candidate with a known-good personal-access posture (e.g. Monzo or bunq) for breadth.
+The 2026-05-24 QWAC verification round eliminated **every German PSD2 candidate** from the v1 ship list — Sparkasse, DKB, Commerzbank, ING-DiBa, Deutsche Bank, N26, Comdirect, Postbank, Atruvia/Volksbanken all gate XS2A access on an eIDAS QWAC, which is issued only to AISP-licensed legal entities. The same is true of every UK bank that exposes only the Open Banking Account & Transaction API (HSBC, Barclays, Lloyds).
+
+The **OPEN set** is three banks, none German:
+
+1. **bunq** (NL-licensed, pan-EU) — own-account API via personal API key or OAuth, no AISP gate. Requires a paid bunq Pro or Elite subscription.
+2. **Monzo** (UK) — own-account OAuth API explicitly designed for personal developer access; the user must be a Monzo account holder.
+3. **Starling** (UK) — Personal Access Tokens, scoped (`account:read`, `balance:read`, `transaction:read`, `space:read`), bound to the user's own account via QR-code linking in the Starling app.
+
+Given the user's primary geography (DE) is unrepresented in the OPEN set, the v1 ship-list options are:
+
+- **Option A — ship one or two OPEN-set plugins anyway for breadth.** Picks: bunq (broadest EU footprint, real EUR IBAN) + Monzo or Starling (UK breadth). Useful for users who happen to bank with these institutions, useless for the user's own primary banking.
+- **Option B — defer the entire `psd2-direct` plugin category from v1.** Document that direct-to-bank for DE users runs exclusively via the **FinTS plugin** (per [`banking-fints.md`](banking-fints.md)) plus the **file-import plugins** (per [`banking-import.md`](banking-import.md)), and revisit PSD2-direct only when one of:
+  - A regulatory change (PSD3 / FIDA — the [Financial Data Access framework currently in EU trilogue](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A52023PC0360)) introduces an explicit natural-person own-account direct-access tier without QWAC.
+  - A new DE neobank (or an existing one) publishes a non-PSD2 personal developer API in the bunq/Monzo/Starling shape.
+  - The user moves accounts to bunq or a similar OPEN-set bank.
+
+**Recommendation: Option A, narrow.** Ship bunq and Monzo as the v1 PSD2-direct reference plugins (priority order: bunq first because of EUR/SEPA-EU footprint, Monzo second for UK-side breadth and proof-of-shape that the `Psd2PluginToolkit` works against a second, very different API dialect). Starling slots in as v1.5 once the bunq + Monzo plugins are stable — same OPEN posture, just lower priority because Monzo already covers the UK breadth case. **Skip every German bank in v1.** German users live on FinTS + file-import until the regulatory landscape changes.
+
 - The per-bank plugin scaffold lands once. Each subsequent bank is a small Phase B sub-phase (~200–500 LOC + per-bank consent-URL + per-bank field shape).
 - **No bank is bundled enabled by default.** A user with no PSD2 plugin enabled never makes a PSD2 network call.
+- **Architectural note:** the `Psd2PluginToolkit` name is now a slight misnomer — the OPEN-set plugins (bunq, Monzo, Starling) talk each bank's own non-PSD2 OAuth API rather than Berlin Group NextGenPSD2. Keep the toolkit name (Phase X-era code does not change), but `B.psd2-common.2` (Berlin Group schema data classes) and `B.psd2-common.6` (UK Open Banking 3.1 schema) are now **deferred indefinitely** — the OPEN-set plugins each carry their own data classes. Berlin Group / OB 3.1 schema work re-opens only when an OPEN-set bank emerges that actually uses one of those specs for personal access.
 
 ## Consent + OAuth flow (per-bank, common shape)
 
@@ -189,7 +216,16 @@ Per-bank — every bank's sandbox is its own animal. Documented in the per-plugi
 
 ## Decision
 
-**Adopt the per-bank PSD2-direct plugin pattern.** Each bank ships as its own `ConnectorPlugin`, off by default, with a shared `Psd2PluginToolkit` factoring the Berlin Group common surface. v1 ships two plugins picked after per-bank verification of the personal-access posture.
+**Adopt the per-bank direct-API plugin pattern.** Each bank ships as its own `ConnectorPlugin`, off by default. The shared `Psd2PluginToolkit` factors the OAuth-redirect / Custom-Tab / token-store mechanics; the Berlin Group + UK Open Banking 3.1 schema sub-modules are deferred indefinitely because the OPEN-set banks don't use those specs.
+
+**v1 ships two plugins, neither German, neither using Berlin Group NextGenPSD2:**
+
+1. **bunq** — own-account API, requires bunq Pro/Elite subscription, no AISP/QWAC gate.
+2. **Monzo** — own-account OAuth API, UK-licensed, explicitly intended for personal developer use.
+
+**v1.5 adds Starling.** No further PSD2-direct plugins are planned until a regulatory shift (PSD3 / FIDA) opens a personal-account-holder direct-access tier on the XS2A path, or until a DE neobank publishes a non-PSD2 personal developer API.
+
+**For DE users on traditional banks (Sparkasse / Volksbanken / DKB / Commerzbank / ING / DB / N26 / Comdirect / Postbank): direct-to-bank runs via the FinTS plugin** (see [`banking-fints.md`](banking-fints.md)) — FinTS is unaffected by the eIDAS QWAC gate because it predates PSD2 and uses HBCI's own auth model. The **file-import plugins** (CAMT.053 / MT940 / OFX / QIF / CSV per [`banking-import.md`](banking-import.md)) cover the universal fallback: every bank's netbanking export route is GDPR-Article-15-mandated and works without any developer-API access at all.
 
 ## Phase X (plugin runtime) — gating
 
@@ -207,35 +243,68 @@ PSD2 plugins are downstream consumers of every X.* facility. **Do not start any 
 ## Phase B sub-step checklist — per-bank PSD2 plugins
 
 > All sub-phases gated on Phase X (plugin runtime) being complete.
+>
+> **Verification round complete (2026-05-24)** — every candidate bank's `.1` sub-step is now ticked with verdict + URL evidence, per the QWAC verification matrix above. The OPEN set narrowed to three non-DE neo-banks (bunq, Monzo, Starling). All German PSD2 candidates are CLOSED until the regulatory landscape shifts.
 
 ### B.psd2-common — shared toolkit (lands once, before any per-bank plugin)
 
 - [ ] **B.psd2-common.1** `Psd2PluginToolkit` module under `app/src/main/java/com/eight87/ledgerboy/plugins/psd2-common/`. SPDX: ours.
-- [ ] **B.psd2-common.2** Berlin Group v1.3 schema data classes (`BerlinGroupAccount`, `BerlinGroupTransaction`, `BerlinGroupBalance`, `BerlinGroupConsent`). Source the JSON schema from <https://www.berlin-group.org/nextgenpsd2-downloads>.
-- [ ] **B.psd2-common.3** `NormalizedTransactionMapper` from Berlin-Group transactions → ledgerboy `NormalizedTransaction` with `Money` minor units per ISO 4217.
-- [ ] **B.psd2-common.4** `ConsentFlow` helper: build consent URL, launch Chrome Custom Tab, parse `ledgerboy://psd2/<plugin-id>/callback` deep link, exchange consent ref → tokens.
-- [ ] **B.psd2-common.5** `ConsentExpiryTracker` (90-day RTS cliff; re-consent notification 7 days before expiry per [`connector-plugins.md`](connector-plugins.md) X.5 scheduler hooks).
-- [ ] **B.psd2-common.6** UK Open Banking v3.1 schema data classes + mapper sibling (used by Monzo / Starling / UK-bank plugins).
-- [ ] **B.psd2-common.7** Robolectric tests: schema round-trip, mapper minor-unit conversion across every ISO 4217 currency, consent-expiry math, callback-URL parser.
+- [ ] **B.psd2-common.2** Berlin Group v1.3 schema data classes (`BerlinGroupAccount`, `BerlinGroupTransaction`, `BerlinGroupBalance`, `BerlinGroupConsent`). Source the JSON schema from <https://www.berlin-group.org/nextgenpsd2-downloads>. **DEFERRED** — no OPEN-set bank uses Berlin Group for personal access; revisit only when an OPEN-set Berlin-Group bank emerges.
+- [ ] **B.psd2-common.3** `NormalizedTransactionMapper` — keep as a target interface (`fun <T> map(raw: T): NormalizedTransaction`); concrete mappers live in each per-bank plugin since the OPEN-set banks share no common schema.
+- [ ] **B.psd2-common.4** `ConsentFlow` helper: build consent URL, launch Chrome Custom Tab, parse `ledgerboy://psd2/<plugin-id>/callback` deep link, exchange consent ref → tokens. Still needed — bunq, Monzo, and Starling all use OAuth 2.0 + redirect.
+- [ ] **B.psd2-common.5** `ConsentExpiryTracker` — repurpose for OAuth refresh-token expiry per bank (Monzo: ~hours, refresh-token several months; bunq: refresh per session; Starling: Personal Access Tokens are long-lived but revocable). RTS 90-day cliff is **N/A for the OPEN-set** because none of them are PSD2 endpoints.
+- [ ] **B.psd2-common.6** UK Open Banking v3.1 schema data classes + mapper sibling. **DEFERRED** — Monzo and Starling use their own APIs, not OB 3.1. Revisit only if a UK OB-3.1 bank ever publishes a personal-access tier.
+- [ ] **B.psd2-common.7** Robolectric tests: `ConsentFlow` callback parser, OAuth state-param round-trip, mapper interface tests with synthetic fixtures.
 
 ### B.psd2-<bank> — per-bank plugin template
 
-Each per-bank plugin is one sub-phase of this shape (template; pick concrete banks for v1 after per-bank verification):
+Each per-bank plugin is one sub-phase of this shape:
 
-- [ ] **B.psd2-<bank>.1** Read the bank's PSD2 developer portal end-to-end. Record: base URL, sandbox URL, NextGenPSD2 version, SCA approaches supported, whether personal-use access without QWAC is offered, any per-bank consent-URL fields needed.
+- [ ] **B.psd2-<bank>.1** Read the bank's developer portal end-to-end. Record: base URL, sandbox URL, API version, auth model, whether personal-use access without QWAC is offered, any per-bank consent-URL fields needed.
 - [ ] **B.psd2-<bank>.2** Implement `Psd2<Bank>Plugin : ConnectorPlugin` under `app/src/main/java/com/eight87/ledgerboy/plugins/psd2-<bank-slug>/`. Register in `PluginManifest`.
-- [ ] **B.psd2-<bank>.3** Wire the bank-specific consent URL + per-bank fields into the shared `ConsentFlow`.
-- [ ] **B.psd2-<bank>.4** Per-bank dialect overrides where the bank deviates from Berlin Group baseline (transaction-pagination model, balance-type enum quirks, optional-field-presence variations).
-- [ ] **B.psd2-<bank>.5** Implement `fetch(window)`: `GET /accounts` → for each `accountId`, `GET /accounts/{id}/transactions?dateFrom=...`. Map to `List<NormalizedTransaction>` via `NormalizedTransactionMapper`.
-- [ ] **B.psd2-<bank>.6** Plugin `ConfigScreen()`: bank intro + dev-portal link + "Begin consent" button + "Test connection" button. All strings in `values/strings.xml` per CLAUDE.md i18n discipline.
+- [ ] **B.psd2-<bank>.3** Wire the bank-specific consent / token-issuance URL + per-bank fields into the shared `ConsentFlow` (or per-bank flow where the bank's auth model differs — Starling uses a Personal Access Token paste rather than OAuth redirect).
+- [ ] **B.psd2-<bank>.4** Per-bank data classes (account, transaction, balance) — each OPEN-set bank has its own schema.
+- [ ] **B.psd2-<bank>.5** Implement `fetch(window)`: per the bank's account-list + transaction-list endpoints. Map to `List<NormalizedTransaction>` via the per-bank mapper.
+- [ ] **B.psd2-<bank>.6** Plugin `ConfigScreen()`: bank intro + dev-portal link + "Begin consent" (or "Paste access token") button + "Test connection" button. All strings in `values/strings.xml` per CLAUDE.md i18n discipline.
 - [ ] **B.psd2-<bank>.7** Privacy statement string: enumerate every endpoint the plugin calls.
-- [ ] **B.psd2-<bank>.8** Robolectric tests: per-bank fixture round-trip (synthetic Berlin-Group transactions JSON → `NormalizedTransaction`), consent URL builder, callback parser.
-- [ ] **B.psd2-<bank>.9** Smoke test against the bank's sandbox via the AVD (per CLAUDE.md UI verification rule).
+- [ ] **B.psd2-<bank>.8** Robolectric tests: per-bank fixture round-trip (synthetic API JSON → `NormalizedTransaction`), consent URL builder, callback parser.
+- [ ] **B.psd2-<bank>.9** Smoke test against the bank's sandbox / live developer account via the AVD (per CLAUDE.md UI verification rule).
 
-### B.psd2 — v1 ship list (concrete picks land here after per-bank verification)
+### Per-bank verification verdicts (B.psd2-<bank>.1)
 
-- [ ] **B.psd2.v1a** First plugin: user's primary bank, picked after the per-bank-verification round.
-- [ ] **B.psd2.v1b** Second plugin: breadth candidate (likely Monzo or bunq based on the likely-fit notes above; verify before opening the sub-phase).
+DE / CONTINENTAL EU (Berlin Group XS2A):
+
+- [x] **B.psd2-sparkasse.1** Verdict: **CLOSED** — eIDAS QWAC required for both sandbox and prod. <https://www.openbanking.exchange/europe/resources/insights/psd2-xs2a-granting-access-certificates-and-registers/>. Plugin not viable for v1.
+- [x] **B.psd2-atruvia.1** (Volksbanken/Raiffeisen) Verdict: **CLOSED** — Atruvia PSD2 1.3 swagger requires eIDAS QWAC. <https://p1.xs2a-doc.atruvia.de/swagger-ui/index.html>. Plugin not viable for v1.
+- [x] **B.psd2-dkb.1** Verdict: **CLOSED** — DKB's finAPI-operated XS2A interface requires QWAC. <https://www.dkb.de/fragen-antworten/wie-funktioniert-der-drittanbieter-zugang-gemaess-psd2>. Plugin not viable for v1.
+- [x] **B.psd2-commerzbank.1** Verdict: **CLOSED** — "A valid QWAC Certificate for PSD2 is required to access the Sandbox and Berlin Group API." <https://psd2.developer.commerzbank.com/howto>. Plugin not viable for v1.
+- [x] **B.psd2-ing.1** Verdict: **CLOSED** — eIDAS certs issued only to organisations; ING confirms Open Banking not available for personal use. <https://developer.ing.com/openbanking/resources/get-started/psd2>. Plugin not viable for v1.
+- [x] **B.psd2-db.1** (Deutsche Bank) Verdict: **CLOSED** — db.com gates all XS2A endpoints on QWAC. <https://developer.db.com/products/psd2>. Plugin not viable for v1.
+- [x] **B.psd2-n26.1** Verdict: **CLOSED** — N26 PSD2 dedicated interface requires production-CA QWAC + AIS-role certificate. <https://support.n26.com/en-eu/security/open-banking-psd2/psd2-open-banking-for-third-party-providers>. Plugin not viable for v1.
+- [x] **B.psd2-comdirect.1** Verdict: **CLOSED** — sandbox accepts ETSI-format test QWAC but prod requires real eIDAS QWAC. <https://xs2a-developer.comdirect.de/content/howto/connection>. Plugin not viable for v1.
+- [x] **B.psd2-postbank.1** Verdict: **CLOSED** — Deutsche-Bank-Group portal posture, same as Deutsche Bank. Plugin not viable for v1.
+- [x] **B.psd2-erste.1** Verdict: **CLOSED** — Berlin Group XS2A, AISP-gated. <https://developers.erstegroup.com/>. Plugin not viable for v1.
+- [x] **B.psd2-rbi.1** Verdict: **CLOSED** — Berlin Group XS2A, AISP-gated. <https://developer.rbinternational.com/>. Plugin not viable for v1.
+
+UK (Open Banking 3.1):
+
+- [x] **B.psd2-hsbc.1** Verdict: **CLOSED** — Open Banking Directory enrollment required; test sandbox only. <https://develop.hsbc.com/knowledge-article/get-started-open-banking-apis>. Plugin not viable for v1.
+- [x] **B.psd2-barclays.1** Verdict: **CLOSED** — FCA AISP/PISP permission required. <https://developer.barclays.com/open-banking>. Plugin not viable for v1.
+- [x] **B.psd2-lloyds.1** Verdict: **CLOSED** — Open Banking Directory company-level registration required for Read-Write APIs. <https://developer.lloydsbanking.com/prod01/lbg/get-started>. Plugin not viable for v1.
+
+Pan-EU / Neo-banks (non-PSD2 own-API paths):
+
+- [x] **B.psd2-bunq.1** Verdict: **OPEN** — "You can use the bunq API to manage your own accounts without a license—a license is only needed if you use the API to provide services to third parties." Requires bunq Pro or Elite paid plan. API key + OAuth flows both available. <https://doc.bunq.com/basics/authentication/api-keys>, <https://doc.bunq.com/basics/authentication/oauth>, <https://help.bunq.com/articles/bunq-developer-create-and-share-your-apps>. **v1 candidate #1.**
+- [x] **B.psd2-monzo.1** Verdict: **OPEN** — "The Monzo Developer API ... You may only connect to your own account or those of a small set of users you explicitly allow." OAuth 2.0, no AISP requirement. <https://docs.monzo.com/>, <https://developers.monzo.com/>. **v1 candidate #2.**
+- [x] **B.psd2-starling.1** Verdict: **OPEN** — Personal Access Tokens scoped `account:read`, `balance:read`, `transaction:read`, `space:read`; account linked via QR-code scan in the Starling app. <https://developer.starlingbank.com/get-started>, <https://developer.starlingbank.com/permissions>, <https://starlingbank.github.io/starling-developer-sdk/examples/authorization>. **v1.5 candidate.**
+- [x] **B.psd2-revolut.1** Verdict: **CLOSED** — no developer Personal API for individuals; developer.revolut.com only serves Revolut Business with certificate-based JWT auth. <https://developer.revolut.com/docs/business/business-api>. Plugin not viable for v1.
+- [x] **B.psd2-wise.1** Verdict: **CONDITIONAL** — personal tokens exist but balance / statement endpoints are restricted to US / CA / AU / NZ / SG / MY accounts; the AIS surface ledgerboy needs is closed for EU/UK Wise customers. <https://docs.wise.com/guides/developer/auth-and-security/personal-api-token>. Plugin viable only for users with non-EU/UK Wise accounts; deprioritise indefinitely.
+
+### B.psd2 — v1 ship list (concrete picks, post-verification)
+
+- [ ] **B.psd2.v1a** First plugin: **bunq** (broadest EUR/SEPA footprint in the OPEN set; covers DE-resident users who maintain a bunq account; paid-tier paywall acknowledged in plugin `ConfigScreen()` description).
+- [ ] **B.psd2.v1b** Second plugin: **Monzo** (UK breadth; proves the toolkit works across two divergent OAuth API shapes).
+- [ ] **B.psd2.v1c** Third plugin (post-v1, "v1.5"): **Starling** (second UK option; Personal Access Token model exercises a non-OAuth auth path).
 
 ## Phase C implementation sub-steps
 

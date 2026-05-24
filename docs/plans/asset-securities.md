@@ -1,6 +1,6 @@
 # ledgerboy — asset: securities (stocks / ETFs / mutual funds)
 
-## Status: REWRITTEN 2026-05-24 — Alpha Vantage / finnhub.io / Polygon / Twelve Data / Marketstack / Yahoo unofficial all OUT (paid-SaaS pricing intermediaries rejected per the "direct-to-source-of-truth only" lock); pivot to **per-broker plugins** + **manual** + **CSV import**, all disabled by default per [`connector-plugins.md`](connector-plugins.md)
+## Status: REWRITTEN 2026-05-24 — Alpha Vantage / finnhub.io / Polygon / Twelve Data / Marketstack / Yahoo unofficial all OUT (paid-SaaS pricing intermediaries rejected per the "direct-to-source-of-truth only" lock); pivot to **per-broker plugins** + **manual** + **CSV import**, all disabled by default per [`connector-plugins.md`](connector-plugins.md). J.13 license verification resolved 2026-05-24: **`TwsApi.jar` REJECTED** (SPDX `PROPRIETARY-IBKR`, prohibits redistribution + non-commercial only); pivot to a clean-room Kotlin TWS socket client (~1,200 LOC) — see J.13.a–J.13.f.
 
 Per-class decision file spawned from [`asset-research.md`](asset-research.md).
 Covers **listed securities**: stocks, ETFs, mutual funds. Crypto lives in
@@ -107,15 +107,26 @@ Phase B sub-phases.
   servers directly** — it talks to the user's own TWS/Gateway, which
   in turn talks to IBKR. This matches the user's posture: the user
   already trusts their own machine.
-- **Client library:** IBKR ships an official `TwsApi.jar` from
-  <https://www.interactivebrokers.com/en/trading/ib-api.php>. **License
-  needs verification** before adoption (license file in the SDK zip);
-  if not MIT / Apache-2.0 / BSD / MPL-2.0, the plugin must use either
-  an alternative permissively-licensed open client (research
-  candidates: <https://github.com/Finvasia/finvasia-api> shape clones,
-  community Kotlin/JVM clients) or implement the socket wire format
-  from scratch. The TWS wire format is documented; a minimal
-  read-only-balances client is on the order of 1,000–2,000 LOC.
+- **Client library:** **`TwsApi.jar` REJECTED on license gate.**
+  Verified 2026-05-24 via the official IBKR developer portal
+  (<https://interactivebrokers.github.io/>) and the official GitHub
+  mirror <https://github.com/InteractiveBrokers/tws-api-public>
+  (`license: null` in the GitHub repo metadata — no SPDX-known OSS
+  license declared). The TWS API is governed by the **TWS API
+  Non-Commercial License Agreement** (SPDX: `PROPRIETARY-IBKR`; not a
+  recognised OSI/SPDX OSS id), which grants "a personal, royalty-free,
+  non-exclusive, non-sublicensable, non-transferable, restricted right
+  and license to install, modify and use the API Code solely for
+  Non-Commercial Purposes" and explicitly states: **"You agree not to
+  publish, disseminate, or redistribute the API Code to any third
+  party."** That redistribution prohibition alone disqualifies the JAR
+  from shipping inside an MIT-licensed Android app published via
+  GitHub Releases; the "Non-Commercial Purposes" gating compounds the
+  problem. Pivot: implement a minimal Kotlin TWS socket client from
+  scratch (the wire protocol + message-ID table are API surface, not
+  copyrightable per *Oracle v. Google*, 593 U.S. ___ (2021)). LOC
+  estimate ~1,200 for the read-only-balances scope; see sub-steps
+  J.13.a–J.13.f below.
 - **Configure flow:** the user enters gateway host (default
   `127.0.0.1` for local LAN), gateway port (default `7497` for TWS
   live or `4002` for IB Gateway live), client ID (any non-zero
@@ -482,15 +493,81 @@ piece of the manual / CSV scaffolding on top.
   asset class enum value `SECURITY`, new fields for `symbol`,
   `exchange`, `quote_currency`, `quantity`, `cost_basis_money`,
   `source_broker_plugin_id_nullable`. Room additive migration.
-- [ ] **J.13** Implement the **`ibkr-tws-client` plugin** (v1
-  reference). Plugin id `ibkr-tws-client`, category `AssetPrice`,
-  license `MIT` (our own client code; `TwsApi.jar` license verified
-  before adoption — if non-permissive, ship a roll-our-own minimal
-  socket client instead). `ConfigScreen()` asks for gateway host
-  (default `127.0.0.1`), port (default `7497`), client ID, read-only
-  toggle. Test connection opens the socket, requests account summary,
-  reports success. `fetch()` reads balances + last prices.
-  **Disabled by default**; registers in `PluginManifest.all`.
+- [x] **J.13** **License verdict on IBKR's official `TwsApi.jar`:
+  REJECT.** Resolved 2026-05-24. The JAR is governed by the **TWS API
+  Non-Commercial License Agreement** (SPDX: `PROPRIETARY-IBKR`), which
+  prohibits redistribution to third parties and restricts use to
+  Non-Commercial Purposes only — both clauses fail the MIT /
+  Apache-2.0 / BSD-2 / BSD-3 / MPL-2.0 gate. Evidence:
+  <https://interactivebrokers.github.io/> (IBKR's own license page
+  quoting the agreement verbatim, including "You agree not to publish,
+  disseminate, or redistribute the API Code to any third party") and
+  <https://github.com/InteractiveBrokers/tws-api-public> (GitHub API
+  reports `"license": null` for the repo — IBKR has not declared an
+  OSS license). **Pivot:** implement the `ibkr-tws-client` plugin
+  against a roll-our-own Kotlin TWS socket client; see J.13.a–J.13.f.
+  The plugin id, category, default-disabled posture, and
+  ConfigScreen() shape remain as previously specified (host
+  `127.0.0.1`, port `7497` TWS live / `7496` TWS paper / `4001` IB
+  Gateway live / `4002` IB Gateway paper, client ID, read-only-only
+  toggle defaulted on).
+- [ ] **J.13.a** **TWS wire-protocol skeleton.** Implement
+  `IbkrSocketClient(host, port, clientId)` in
+  `app/src/main/java/com/eight87/ledgerboy/plugins/ibkr-tws-client/wire/`.
+  Wire shape: length-prefixed text messages over TCP. Each outgoing
+  message is `[4-byte big-endian length][field1]\0[field2]\0...\0`;
+  incoming messages have the same framing. Reader + writer live in
+  separate coroutines on `Dispatchers.IO`; backpressure via a
+  bounded `Channel<List<String>>` of parsed fields. JVM unit tests
+  with a fake socket pair cover frame encode/decode, partial reads,
+  and disconnect handling.
+- [ ] **J.13.b** **Handshake.** Client sends API version string
+  (`v100..187` range — the supported-versions list, plus optional
+  connect-options) followed by `START_API` (message ID 71) with
+  clientId and optional account list. Server replies with server
+  version + connection time. Implement the version negotiation per
+  the public protocol description; reference the message-ID constants
+  from IBKR's open API documentation at
+  <https://interactivebrokers.github.io/tws-api/> (the message IDs +
+  field orders are API surface, not copyrightable code — per
+  *Oracle v. Google* on Java APIs). **Do not copy any source from
+  `TwsApi.jar`**; clean-room re-derive from the published wire-format
+  documentation only. Document this posture in a code-comment block
+  at the top of `IbkrSocketClient.kt`.
+- [ ] **J.13.c** **Read-only message set (v1 scope).** Implement
+  outbound `reqAccountUpdates(subscribe=true, accountCode)` (message
+  ID 6) and `reqContractDetails(reqId, contract)` (message ID 9).
+  Implement inbound parsers for `accountValue` (msg ID 6),
+  `portfolioValue` (msg ID 7), `accountUpdateTime` (msg ID 8),
+  `contractDetails` (msg ID 10), `contractDetailsEnd` (msg ID 52),
+  and `errorMessage` (msg ID 4). Map portfolio rows to
+  `BrokerPosition(CanonicalSymbol(symbol, exchange, currency),
+  Quantity, Money(marketPrice))`. **No order submission, no
+  market-data subscription, no streaming, no historical-data requests
+  in v1** — keeps the LOC ~1,200 and the IBKR-facing surface minimal.
+- [ ] **J.13.d** **`IbkrTwsClientPlugin` wrapper.** Implements
+  `ConnectorPlugin` from Phase X. `fetch()` opens the socket via
+  `IbkrSocketClient`, sends handshake + `reqAccountUpdates`, collects
+  one full snapshot (terminated by `accountDownloadEnd`, msg ID 54),
+  writes `ValuationEvent(source="plugin:ibkr-tws-client")` per
+  position, then unsubscribes and closes. Test connection runs
+  `fetch()` and asserts at least one `accountValue` row arrived
+  (an empty account is still a valid connection). Plugin license
+  `MIT` (our own clean-room code). **Disabled by default;** registers
+  in `PluginManifest.all`.
+- [ ] **J.13.e** **Robolectric + JVM tests.** Socket-pair fixtures
+  replay captured wire dumps (synthetic, hand-crafted — not from a
+  real IBKR account, per the privacy posture in `CLAUDE.md`). Cover
+  happy-path snapshot, partial-frame reads, error-message handling,
+  disconnect mid-snapshot, version-mismatch handshake failure.
+- [ ] **J.13.f** **License-posture comment block** at the top of
+  `IbkrSocketClient.kt` documenting (1) why `TwsApi.jar` was rejected,
+  (2) the *Oracle v. Google* clean-room rationale for re-implementing
+  the wire protocol against the public docs, (3) the explicit
+  instruction to future contributors: do not paste any code from
+  `TwsApi.jar` or any GPL/LGPL fork of it into this file. Same block
+  cross-referenced from `docs/plans/oss-licenses.md` if that file's
+  scope grows to cover clean-room policy.
 - [ ] **J.14** Implement the **`comdirect` plugin**. Plugin id
   `comdirect`, category `AssetPrice`, license `MIT`. `ConfigScreen()`
   runs the OAuth 2.0 authorization-code flow against
@@ -536,6 +613,9 @@ piece of the manual / CSV scaffolding on top.
 - Plugin architecture authority: [`connector-plugins.md`](connector-plugins.md)
 - IBKR TWS API: <https://interactivebrokers.github.io/tws-api/>
 - IBKR API hub: <https://www.interactivebrokers.com/en/trading/ib-api.php>
+- IBKR TWS API license page (Non-Commercial License Agreement, verbatim): <https://interactivebrokers.github.io/>
+- IBKR official GitHub mirror (no SPDX license declared): <https://github.com/InteractiveBrokers/tws-api-public>
+- *Google LLC v. Oracle America, Inc.*, 593 U.S. ___ (2021) — Java API surface is fair use; basis for the clean-room re-implementation of the TWS wire protocol from public docs: <https://www.supremecourt.gov/opinions/20pdf/18-956_d18f.pdf>
 - Trade Republic unofficial client (reference, MIT): <https://github.com/Zarathustra2/TradeRepublicApi>
 - Comdirect developer portal: <https://developer.comdirect.de/>
 - Schwab developer portal: <https://developer.schwab.com/>
