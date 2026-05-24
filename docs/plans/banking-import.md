@@ -1,18 +1,26 @@
-# banking-import — file import research (CSV / QIF / OFX / MT940 / CAMT.053)
+# banking-import — file-import plugins (CSV / QIF / OFX / MT940 / CAMT.053)
 
-## Status: RESEARCH ROUND 1 — decisions per format below
+## Status: RESEARCH — recommendation rewritten 2026-05-24 after the connector-plugin architecture lock. Each format is its own plugin off by default; CSV further spawns per-bank-dialect sub-plugins. Library picks carry over.
 
-**Headline decisions:**
+> Parent: [`banking-research.md`](banking-research.md) · Architectural authority: [`connector-plugins.md`](connector-plugins.md) · siblings: [`banking-psd2.md`](banking-psd2.md) · [`banking-fints.md`](banking-fints.md) · [`banking-fx.md`](banking-fx.md) · [`banking-ebics.md`](banking-ebics.md)
 
-- **CSV** — **roll-our-own** parser + per-bank-dialect plugin system (~300 LOC core + ~50 LOC per dialect). stdlib + okio only.
-- **QIF** — **roll-our-own** (~150 LOC). No mature permissively-licensed JVM lib; format is trivial.
-- **OFX** — **adopt `com.webcohesion.ofx4j:ofx4j`** (Apache-2.0).
-- **MT940** — **adopt `com.prowidesoftware:pw-swift-core`** (Apache-2.0), narrowed to the MT940 message class.
-- **CAMT.053** — **roll-our-own**, XSD-driven via codegen (KAXB / xjc-with-jakarta-to-Kotlin shim) at build time. No third-party runtime dep.
+## Pivot summary
 
-**v1 priority order:** **(1) CSV first** (universal fallback, works for every bank that publishes any export), **(2) CAMT.053 second** (cleanest structured data, growing dominant for DE / EU SEPA), **(3) MT940 third** (still common from DE / EU corporate-ish accounts and inside FinTS responses, prowide gives it to us cheaply), **(4) OFX fourth** (US / UK / Canada — adoption-heavy outside DACH), **(5) QIF last** (legacy, low cost to add once anyone asks).
+Per [`connector-plugins.md`](connector-plugins.md), every importer is a **`ConnectorPlugin` of category `Import`**, disabled by default. The user enables the format(s) their bank exports. Library picks from the earlier research round are unchanged — the pivot is purely architectural (each format = a plugin), not technical.
 
-All importers produce `NormalizedTransaction` rows with a **stable per-row content hash** so re-importing the same file or overlapping date ranges doesn't double-count. Hash = SHA-256 of `(account_iban || value_date || posting_date || amount_minor_units || currency || normalized_purpose_text || counterparty_iban)` — first 16 bytes, hex.
+**Headline decisions (unchanged from prior research, now framed as plugins):**
+
+- **CSV plugin** — **roll-our-own** parser core + per-bank-dialect **sub-plugins** (~300 LOC core + ~50 LOC per dialect sub-plugin). stdlib + okio only. **Sub-plugin model:** each known-bank-CSV-dialect is its own plugin entry (Sparkasse-CSV-dialect plugin, DKB-CSV-dialect plugin, Commerzbank-CSV-dialect plugin, ING-DiBa-CSV-dialect plugin, N26-CSV-dialect plugin, Revolut-CSV-dialect plugin, Wise-CSV-dialect plugin), plus a **generic-mapping CSV plugin** for any bank not covered (the user maps columns in the plugin's `ConfigScreen()`, the map persists in DataStore).
+- **QIF plugin** — **roll-our-own** (~150 LOC). No mature permissively-licensed JVM lib; format is trivial.
+- **OFX plugin** — **adopt `com.webcohesion.ofx4j:ofx4j`** (Apache-2.0).
+- **MT940 plugin** — **adopt `com.prowidesoftware:pw-swift-core`** (Apache-2.0), narrowed to the MT940 message class.
+- **CAMT.053 plugin** — **roll-our-own** XmlPullParser-streaming walker. No third-party runtime dep.
+
+**v1 priority order:** **(1) CSV first** (universal fallback, works for every bank that publishes any export), **(2) CAMT.053 second** (cleanest structured data, growing dominant for DE / EU SEPA), **(3) MT940 third** (still common from DE / EU corporate-ish accounts and inside FinTS HKKAZ responses, prowide gives it to us cheaply, and the FinTS plugin reuses the same `Mt940Importer` per [`banking-fints.md`](banking-fints.md)), **(4) OFX fourth** (US / UK / Canada — adoption-heavy outside DACH), **(5) QIF last** (legacy, low cost to add once anyone asks).
+
+Each importer plugin is `Disabled` by default. The user enables the format(s) they actually use; configuration is "pick a file via SAF" (no credentials, no network), so `Configured` collapses into "Enabled with a SAF picker shortcut configured" and `Active` triggers the moment the user actually picks a file. Per [`connector-plugins.md`](connector-plugins.md), import plugins never make network calls, so the `PluginNetworkGuard` is a no-op for them — they only consume SAF-picked content and emit `NormalizedTransaction` rows for the host to write.
+
+All importer plugins produce `NormalizedTransaction` rows with a **stable per-row content hash** so re-importing the same file or overlapping date ranges doesn't double-count. Hash = SHA-256 of `(account_iban || value_date || posting_date || amount_minor_units || currency || normalized_purpose_text || counterparty_iban)` — first 16 bytes, hex.
 
 ---
 
@@ -45,7 +53,9 @@ BankCsvDialect (interface)
   ├─ map(row: List<String>): NormalizedTransaction?
 ```
 
-Built-in dialects ship for: Sparkasse (DE, `;`-delimited, `,`-decimal, `ISO-8859-1`), DKB (DE, `;`, `,`, `UTF-8`), ING-DiBa (DE), Commerzbank (DE), N26 (`,`, `.`, `UTF-8`), Revolut, Wise, plus a **generic-CSV-with-column-mapper UI** for any bank not yet covered (one-time setup per user-bank pair, stored in DataStore).
+Built-in dialect **sub-plugins** ship for: Sparkasse (DE, `;`-delimited, `,`-decimal, `ISO-8859-1`), DKB (DE, `;`, `,`, `UTF-8`), ING-DiBa (DE), Commerzbank (DE), N26 (`,`, `.`, `UTF-8`), Revolut, Wise. Each is its own `PluginManifest` entry of category `Import`, off by default. The user enables the dialect their bank uses; the dialect's `ConfigScreen()` is "tap to pick a CSV via SAF" plus an optional column-map override.
+
+For any bank not covered by a built-in dialect sub-plugin, the **generic-CSV-mapping plugin** opens a column-mapper UI when the user picks a file: the user identifies which columns are date / amount / counterparty / purpose, the map persists per-user-bank-pair in DataStore, and subsequent imports for the same bank reuse it.
 
 Encoding detection: read first 4 bytes for BOM; fall back to chardet-style heuristic on the first 4KB (just check for high-byte distribution patterns that distinguish UTF-8 from Windows-1252 / ISO-8859-1 — ~30 LOC, no third-party dep).
 
@@ -59,7 +69,7 @@ Encoding detection: read first 4 bytes for BOM; fall back to chardet-style heuri
 
 ### Decision
 
-**Roll-our-own.** Core parser ~300 LOC; ~50 LOC per built-in dialect; generic-mapper UI ~200 LOC + DataStore-persisted column-map per user-defined dialect. Encoding detection ~30 LOC. **Total ~1,000 LOC** for v1 covering the eight built-in dialects above plus the generic mapper.
+**Roll-our-own, packaged as one `csv-core` shared module + seven per-bank `csv-<bank>` sub-plugins + one `csv-generic` mapping sub-plugin.** All `Import`-category, all off by default, all registered individually in `PluginManifest` per [`connector-plugins.md`](connector-plugins.md). Core parser ~300 LOC; ~50 LOC per built-in dialect sub-plugin; generic-mapper UI ~200 LOC + DataStore-persisted column-map per user-defined dialect. Encoding detection ~30 LOC. **Total ~1,000 LOC** for v1 covering the seven built-in dialect sub-plugins plus the generic-mapping sub-plugin.
 
 ---
 
@@ -187,71 +197,87 @@ CAMT.053 XML always declares its encoding in the XML prolog — honour it. OFX v
 
 ## License-gate summary
 
-| Format | Library | SPDX | Verdict |
+| Format plugin | Library | SPDX | Verdict |
 |---|---|---|---|
-| CSV | roll-our-own | (n/a, our code) | adopt |
+| CSV (`csv-core` + per-bank sub-plugins) | roll-our-own | (n/a, our code) | adopt |
 | QIF | roll-our-own | (n/a, our code) | adopt |
 | OFX | `com.webcohesion.ofx4j:ofx4j` | Apache-2.0 | adopt |
 | MT940 | `com.prowidesoftware:pw-swift-core` | Apache-2.0 | adopt |
 | CAMT.053 | roll-our-own (XmlPullParser walker) | (n/a, our code) | adopt |
 
-All adoptions pass the [`oss-licenses.md`](oss-licenses.md) gate. Zero LGPL / AGPL / GPL deps land in the APK.
+All adoptions pass the [`oss-licenses.md`](oss-licenses.md) gate. Zero LGPL / AGPL / GPL deps land in the APK. Each plugin's own `licenseSpdx` surfaces in Settings → Plugins per [`connector-plugins.md`](connector-plugins.md).
+
+## Phase X (plugin runtime) — gating
+
+Per [`connector-plugins.md`](connector-plugins.md), Phase X lands before any import plugin. The runtime supplies:
+
+- `ConnectorPlugin` interface + state machine (X.1).
+- `PluginManifest` (X.2) — each importer registers as its own entry.
+- Per-plugin DataStore (X.3) — used by the CSV generic-mapping plugin to persist column maps per user-bank pair.
+- Settings → Plugins UI (X.6 / X.8) — each importer's `ConfigScreen()` ships the SAF picker shortcut.
+- SAF-picker hook from the host (per [`connector-plugins.md`](connector-plugins.md) Configure flow).
+
+**Do not start any importer plugin sub-phase below until Phase X is complete.**
 
 ## Phase B implementation sub-step checklist
 
-### B-Import.A — Foundation (must land first, common to all formats)
+### B.import-common — Foundation (must land first, common to all import plugins)
 
-- [ ] **B-Import.A.1** Land `NormalizedTransaction` data class + `Money` value class (integer minor units) per CLAUDE.md money-handling rule.
-- [ ] **B-Import.A.2** Land `rowHash` computation + Room unique-constraint on `(account_id, row_hash)` so re-imports are idempotent at the DB level.
-- [ ] **B-Import.A.3** Land `ImportFormat` enum + `BankImporter` interface (`import(input: InputStream, accountKey: String): Result<List<NormalizedTransaction>>`).
-- [ ] **B-Import.A.4** Land SAF picker integration (`ACTION_OPEN_DOCUMENT` with MIME filter, persisted URI permissions only for the watch-folder optional Phase F+ flow).
-- [ ] **B-Import.A.5** Land BOM-sniff + charset-heuristic helper (`CharsetDetect.kt`, ~80 LOC).
+- [ ] **B.import-common.1** Land `NormalizedTransaction` data class + `Money` value class (integer minor units) per CLAUDE.md money-handling rule.
+- [ ] **B.import-common.2** Land `rowHash` computation + Room unique-constraint on `(account_id, row_hash)` so re-imports are idempotent at the DB level.
+- [ ] **B.import-common.3** Land `ImportFormat` enum + internal `BankImporter` interface (`import(input: InputStream, accountKey: String): Result<List<NormalizedTransaction>>`) — each importer plugin wraps a `BankImporter` and emits its rows via the standard `ConnectorPlugin.fetch()` path.
+- [ ] **B.import-common.4** Land SAF picker integration via the host's plugin SAF hook (`ACTION_OPEN_DOCUMENT` with MIME filter, persisted URI permissions only for the watch-folder optional Phase F+ flow).
+- [ ] **B.import-common.5** Land BOM-sniff + charset-heuristic helper (`CharsetDetect.kt`, ~80 LOC).
 
-### B-Import.B — CSV (v1 priority 1)
+### B.import-csv — CSV plugins (v1 priority 1)
 
-- [ ] **B-Import.B.1** Land `BankCsvDialect` interface + core CSV-line splitter (delimiter param, quoted-field handling per RFC 4180).
-- [ ] **B-Import.B.2** Ship the eight built-in dialects: Sparkasse, DKB, ING-DiBa, Commerzbank, N26, Revolut, Wise, generic-fallback.
-- [ ] **B-Import.B.3** Generic-CSV-with-column-mapper UI for unknown dialects; per-user dialect persisted in DataStore (one map per user-bank pair).
-- [ ] **B-Import.B.4** Robolectric tests against fictional-sample fixtures (`app/src/test/resources/fixtures/`, gitignored per CLAUDE.md money-privacy rule — fixtures stay local with synthetic data only).
+- [ ] **B.import-csv.1** Land `csv-core` shared module: `BankCsvDialect` interface + core CSV-line splitter (delimiter param, quoted-field handling per RFC 4180). Used by every CSV sub-plugin.
+- [ ] **B.import-csv.2** Ship each built-in dialect as its own plugin under `plugins/import-csv-<bank>/`: Sparkasse, DKB, ING-DiBa, Commerzbank, N26, Revolut, Wise. Each implements `ConnectorPlugin` (category `Import`), registers in `PluginManifest`, off by default.
+- [ ] **B.import-csv.3** Ship the **generic-CSV-mapping plugin** (`plugins/import-csv-generic/`) with a column-mapper `ConfigScreen()` for unknown dialects; per-user-bank column map persisted in the plugin's DataStore namespace (per [`connector-plugins.md`](connector-plugins.md) X.3).
+- [ ] **B.import-csv.4** Robolectric tests against fictional-sample fixtures (`app/src/test/resources/fixtures/`, gitignored per CLAUDE.md money-privacy rule — fixtures stay local with synthetic data only).
 
-### B-Import.C — CAMT.053 (v1 priority 2)
+### B.import-camt053 — CAMT.053 plugin (v1 priority 2)
 
-- [ ] **B-Import.C.1** Land XmlPullParser streaming walker (`CamtImporter`, ~300 LOC) handling versions `001.02` / `001.04` / `001.08` / `001.13`.
-- [ ] **B-Import.C.2** Per-version field-presence shim (~100 LOC; e.g. `001.02` debtor-name path vs `001.08`).
-- [ ] **B-Import.C.3** Robolectric tests against fictional `acme-savings-2026-q1.camt053.xml` fixture.
+- [ ] **B.import-camt053.1** Land XmlPullParser streaming walker (`CamtImporter`, ~300 LOC) handling versions `001.02` / `001.04` / `001.08` / `001.13`.
+- [ ] **B.import-camt053.2** Per-version field-presence shim (~100 LOC; e.g. `001.02` debtor-name path vs `001.08`).
+- [ ] **B.import-camt053.3** Wrap as `Camt053ImportPlugin : ConnectorPlugin` under `plugins/import-camt053/`. Register in `PluginManifest`. Off by default.
+- [ ] **B.import-camt053.4** Robolectric tests against fictional `acme-savings-2026-q1.camt053.xml` fixture.
 
-### B-Import.D — MT940 (v1 priority 3)
+### B.import-mt940 — MT940 plugin (v1 priority 3)
 
-- [ ] **B-Import.D.1** Add `com.prowidesoftware:pw-swift-core` to `app/build.gradle.kts` `implementation` deps; verify SPDX with `./gradlew :app:licenseeAndroidDebug`.
-- [ ] **B-Import.D.2** R8 keep rules narrowed to `com.prowidesoftware.swift.model.mt.mt9xx.MT940` + transitive model; exclude JPA/Hibernate model package. Verify minified APK delta < 1 MB.
-- [ ] **B-Import.D.3** Land `Mt940Importer` (~150 LOC) wrapping `MT940.parse(text)`, walking `:61:`/`:86:` tag pairs into `NormalizedTransaction`. Per-DE-bank `:86:` subfield decoder (`?20`/`?21`/`?32`/`?33`).
-- [ ] **B-Import.D.4** Robolectric tests against fictional `acme-savings-2026-q1.mt940` fixture.
+- [ ] **B.import-mt940.1** Add `com.prowidesoftware:pw-swift-core` to `app/build.gradle.kts` `implementation` deps; verify SPDX with `./gradlew :app:licenseeAndroidDebug`.
+- [ ] **B.import-mt940.2** R8 keep rules narrowed to `com.prowidesoftware.swift.model.mt.mt9xx.MT940` + transitive model; exclude JPA/Hibernate model package. Verify minified APK delta < 1 MB.
+- [ ] **B.import-mt940.3** Land `Mt940Importer` (~150 LOC) wrapping `MT940.parse(text)`, walking `:61:`/`:86:` tag pairs into `NormalizedTransaction`. Per-DE-bank `:86:` subfield decoder (`?20`/`?21`/`?32`/`?33`). Also consumed by the `fints-client` plugin per [`banking-fints.md`](banking-fints.md) (HKKAZ payload is MT940).
+- [ ] **B.import-mt940.4** Wrap as `Mt940ImportPlugin : ConnectorPlugin` under `plugins/import-mt940/`. Register in `PluginManifest`. Off by default. `licenseSpdx` declares both our MIT wrapper and the Apache-2.0 prowide dep.
+- [ ] **B.import-mt940.5** Robolectric tests against fictional `acme-savings-2026-q1.mt940` fixture.
 
-### B-Import.E — OFX (v1 priority 4)
+### B.import-ofx — OFX plugin (v1 priority 4)
 
-- [ ] **B-Import.E.1** Add `com.webcohesion.ofx4j:ofx4j` to `implementation`; verify SPDX.
-- [ ] **B-Import.E.2** Land `OfxImporter` (~150 LOC) using `OFXReader` against `BankStatementResponse`.
-- [ ] **B-Import.E.3** Robolectric tests against fictional `test-brokerage-2026-jan.ofx` fixture.
+- [ ] **B.import-ofx.1** Add `com.webcohesion.ofx4j:ofx4j` to `implementation`; verify SPDX.
+- [ ] **B.import-ofx.2** Land `OfxImporter` (~150 LOC) using `OFXReader` against `BankStatementResponse`.
+- [ ] **B.import-ofx.3** Wrap as `OfxImportPlugin : ConnectorPlugin` under `plugins/import-ofx/`. Register in `PluginManifest`. Off by default.
+- [ ] **B.import-ofx.4** Robolectric tests against fictional `test-brokerage-2026-jan.ofx` fixture.
 
-### B-Import.F — QIF (v1 priority 5, deferable)
+### B.import-qif — QIF plugin (v1 priority 5, deferable)
 
-- [ ] **B-Import.F.1** Land `QifImporter` (~150 LOC) — line-oriented walker, date-format probe, `!Type:Bank` / `!Type:CCard` / `!Type:Cash` support.
-- [ ] **B-Import.F.2** Robolectric tests against fictional `demo-2026.qif` fixture.
+- [ ] **B.import-qif.1** Land `QifImporter` (~150 LOC) — line-oriented walker, date-format probe, `!Type:Bank` / `!Type:CCard` / `!Type:Cash` support.
+- [ ] **B.import-qif.2** Wrap as `QifImportPlugin : ConnectorPlugin` under `plugins/import-qif/`. Register in `PluginManifest`. Off by default.
+- [ ] **B.import-qif.3** Robolectric tests against fictional `demo-2026.qif` fixture.
 
-### B-Import.G — Integration
+### B.import-integration
 
-- [ ] **B-Import.G.1** Wire each `BankImporter` behind the `BankConnector` interface so the data layer doesn't distinguish file-import from live-API connectors (FinTS / EBICS / PSD2).
-- [ ] **B-Import.G.2** Surface import-result toast with dedup count ("Imported 47 new transactions, skipped 12 duplicates") — calm-factual copy per CLAUDE.md editorial rule.
-- [ ] **B-Import.G.3** Verify SAF persisted-URI behaviour on `adb install -r --user 0` per CLAUDE.md SAF-specific test-loop notes.
+- [ ] **B.import-integration.1** Confirm each importer plugin flows rows through the host's standard `ConnectorPlugin.fetch()` → host-write pipeline; the data layer doesn't distinguish file-import plugins from live-connector plugins (FinTS / PSD2-per-bank).
+- [ ] **B.import-integration.2** Surface import-result toast with dedup count ("Imported 47 new transactions, skipped 12 duplicates") — calm-factual copy per CLAUDE.md editorial rule.
+- [ ] **B.import-integration.3** Verify SAF persisted-URI behaviour on `adb install -r --user 0` per CLAUDE.md SAF-specific test-loop notes.
 
 ## Decision summary
 
-| Format | Approach | License | LOC est. | v1 priority |
+| Plugin | Approach | License | LOC est. | v1 priority |
 |---|---|---|---|---|
-| CSV | roll-our-own + per-bank-dialect plugin | (ours) | ~1,000 | 1 |
-| CAMT.053 | roll-our-own XmlPullParser walker | (ours) | ~400 | 2 |
-| MT940 | adopt `pw-swift-core` | Apache-2.0 | ~250 glue | 3 |
-| OFX | adopt `com.webcohesion.ofx4j:ofx4j` | Apache-2.0 | ~150 glue | 4 |
-| QIF | roll-our-own | (ours) | ~150 | 5 (deferable) |
+| CSV (`csv-core` + per-bank sub-plugins + generic-mapping) | roll-our-own | (ours) | ~1,000 | 1 |
+| CAMT.053 plugin | roll-our-own XmlPullParser walker | (ours) | ~400 | 2 |
+| MT940 plugin | adopt `pw-swift-core` | Apache-2.0 | ~250 glue | 3 |
+| OFX plugin | adopt `com.webcohesion.ofx4j:ofx4j` | Apache-2.0 | ~150 glue | 4 |
+| QIF plugin | roll-our-own | (ours) | ~150 | 5 (deferable) |
 
-Total new-code budget for v1 file-import surface: **~2,000 LOC Kotlin** + two well-scoped Apache-2.0 deps. Covers every plausible bank export shape the user will encounter in DE / EU / UK / US.
+Total new-code budget for v1 import-plugin surface: **~2,000 LOC Kotlin** + two well-scoped Apache-2.0 deps. Covers every plausible bank export shape the user will encounter in DE / EU / UK / US. Every plugin off by default per [`connector-plugins.md`](connector-plugins.md).

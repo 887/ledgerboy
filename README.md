@@ -1,6 +1,6 @@
 # ledgerboy
 
-Modern Android personal-finance / budget / multi-asset tracker. Built on Jetpack Compose + Room + a direct-from-device banking stack (EBICS, FinTS/HBCI, PSD2 Open Banking, file import). Same CLI-only build philosophy as the rest of the family: [tonearmboy](https://github.com/887/tonearmboy) (music), [whisperboy](https://github.com/887/whisperboy) (audiobooks), [shutterboy](https://github.com/887/shutterboy) (photos), [strictlykeptboy](https://github.com/887/strictlykeptboy) (calendar + todos), [pageboy](https://github.com/887/pageboy) (e-reader).
+Modern Android personal-finance / budget / multi-asset tracker. Built on Jetpack Compose + Room + a direct-from-device banking stack (FinTS/HBCI, PSD2 Open Banking direct-to-bank, file import) — every connector is a plugin, disabled by default. Same CLI-only build philosophy as the rest of the family: [tonearmboy](https://github.com/887/tonearmboy) (music), [whisperboy](https://github.com/887/whisperboy) (audiobooks), [shutterboy](https://github.com/887/shutterboy) (photos), [strictlykeptboy](https://github.com/887/strictlykeptboy) (calendar + todos), [pageboy](https://github.com/887/pageboy) (e-reader).
 
 ## Status
 
@@ -9,14 +9,34 @@ Modern Android personal-finance / budget / multi-asset tracker. Built on Jetpack
 ## Goals
 
 - **Track multiple accounts, multiple banks, multiple currencies.** Checking, savings, credit, brokerage, cash, crypto — all on one ledger surface.
-- **Connect directly to banks where possible.** EBICS (DACH-region banking standard), FinTS/HBCI (older but still widespread in Germany), PSD2 Open Banking (UK/EU bank-agnostic). File-import fallback (CSV / QIF / OFX / MT940 / CAMT.053) for everything else.
-- **Multi-currency.** FX rates from a published source (ECB daily reference rates is the most likely default; alternatives evaluated at research time).
+- **Connect directly to banks where possible.** FinTS/HBCI (still widespread in Germany — shipped as a roll-our-own permissively-licensed client), per-bank PSD2-direct via Berlin Group NextGenPSD2 (each bank that publishes its own direct API gets its own plugin), file import (CSV / QIF / OFX / MT940 / CAMT.053) as the universal fallback. **No aggregator middlemen.**
+- **Multi-currency.** FX rates from a published source — ECB daily reference rates direct from the ECB, or Bundesbank direct, both shipped as plugins disabled by default.
 - **Budgets.** Envelope / category / rolling — the right shape gets picked after research; the data model accommodates more than one.
 - **Asset tracking beyond cash.** Real estate, vehicles, securities, collectibles (e.g. trading cards), generic "asset with a manual valuation history" — each with periodic mark-to-market.
 - **Data visualization is a first-class concern.** Net-worth-over-time, cashflow Sankey, category treemaps, currency-exposure, asset-class allocation, drill-down charts. Compose charting library is a research decision (see [`docs/plans/dataviz-research.md`](docs/plans/dataviz-research.md)).
 - **Local-first.** Database lives on the device. Banking APIs are called directly from the device — nothing transits a server we operate.
 - Modern stack: Kotlin + Compose + Material 3 Expressive + Room. No legacy Android Views, no Java.
 - **Built entirely from the CLI**, no Android Studio required.
+
+## Plugin architecture
+
+Every connector — banking, asset prices, FX, file import, regional
+indexes — is a plugin that ships disabled by default. Ledgerboy out
+of the box makes zero network calls; the first call to any third
+party comes from a plugin the user has explicitly enabled AND
+configured.
+
+- No aggregator middlemen (GoCardless, Tink, Plaid, Salt Edge,
+  TrueLayer).
+- No paid-SaaS pricing services (Alpha Vantage, finnhub.io,
+  CoinGecko, CoinMarketCap).
+- Direct-to-source-of-truth only — direct-to-bank PSD2, direct
+  FinTS client, direct-to-broker, direct-to-exchange, direct
+  on-chain RPC, ECB / Bundesbank direct, community open-data
+  endpoints directly.
+
+See [`docs/plans/connector-plugins.md`](docs/plans/connector-plugins.md)
+for the architecture details.
 
 ## Non-goals (v1)
 
@@ -30,10 +50,12 @@ Modern Android personal-finance / budget / multi-asset tracker. Built on Jetpack
 
 Ledgerboy is **local-first by architectural commitment, not by accident.**
 
+- **Nothing phones home until a plugin is enabled AND configured AND active.** Out of the box, a fresh install makes zero network calls — no telemetry, no startup pings, no plugin-update-check, no remote-manifest fetch. The first network packet to any third party comes from a plugin the user explicitly enabled, configured, and the scheduler (or a manual tap) triggered. See [`docs/plans/connector-plugins.md`](docs/plans/connector-plugins.md).
 - The database lives on the device. The user can encrypt it (research-phase decision on SQLCipher vs. Android Keystore wrapping — see [`docs/plans/security-research.md`](docs/plans/security-research.md)).
-- Banking API calls (EBICS / FinTS / PSD2) go from the device directly to the bank or the user-configured aggregator. No traffic transits a server we operate.
+- Banking API calls (FinTS / direct PSD2 per bank) go from the device **directly to the bank** — no aggregator middleman, no server we operate. Asset-price plugins go direct to broker / exchange / community open-data endpoints. FX plugins fetch direct from the ECB or Bundesbank.
 - No telemetry, no analytics, no crash reporters phoning home by default. If a crash reporter ever lands, it's opt-in, and it ships with a clear list of what gets sent.
-- Credentials (EBICS keys, OAuth refresh tokens, FinTS PINs) live in Android Keystore / SQLCipher-backed storage — never in plaintext, never in shared-preferences.
+- Credentials (FinTS PINs, PSD2 OAuth refresh tokens, per-broker API keys) live in Android Keystore / SQLCipher-backed storage — never in plaintext, never in shared-preferences.
+- Per-plugin transparency: Settings → Plugins shows every plugin's state, last fetch timestamp, bytes-in / bytes-out, and the actual endpoint URLs called. The user can audit exactly what is calling out, when, and to where.
 
 If any of these change, this section gets revised in the same commit, not later. Local-first is a load-bearing claim and it has to stay honest.
 
@@ -180,7 +202,7 @@ See [`CLAUDE.md`](CLAUDE.md) for the full Claude-driven test loop.
 
 - **Unit / data layer** — Robolectric, JVM-only, zero device. Banking-format parsers (CAMT.053, MT940, OFX, QIF, CSV) and FX-conversion math are unit-test territory.
 - **UI / integration** — [`mobile-mcp`](https://github.com/mobile-next/mobile-mcp) over ADB driving the headless AVD (or a real phone via wifi-adb).
-- **Banking sandbox** — research-phase decision per provider. EBICS test banks, FinTS sandboxes, PSD2 aggregator sandboxes — never against real production credentials in automated tests.
+- **Banking sandbox** — per-plugin decision. FinTS sandboxes, per-bank PSD2-direct sandboxes — never against real production credentials in automated tests.
 
 ## Translations
 

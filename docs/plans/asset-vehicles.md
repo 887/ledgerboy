@@ -1,6 +1,6 @@
 # ledgerboy — asset class: vehicles
 
-## Status: DECISION — manual-only, with a local depreciation-curve helper at revaluation time
+## Status: DECISION — manual-only, with a local (intrinsic, non-plugin) depreciation-curve helper at revaluation time; no asset-price plugin candidate today per [`connector-plugins.md`](connector-plugins.md)
 
 Per-class research deliverable for the **vehicles** asset class (cars / motorcycles / boats / similar). Part of the manual-valuation cluster (see [`asset-realestate.md`](asset-realestate.md), [`asset-generic.md`](asset-generic.md)).
 
@@ -181,8 +181,19 @@ Shares the `AssetEntity` / `ValuationEventEntity` / wizard scaffolding with real
 - [ ] **J.V.9** Sample data fixture (fictional): one asset row "Acme Demo Car", sub-class `used_car`, currency EUR, purchase price €20,000.00 dated 2024-06-01, initial value (helper-estimated) ~€14,580.00 dated 2026-01-01. Lives in `app/src/test/resources/fixtures/asset-vehicle-sample.json`.
 - [ ] **J.V.10** No-network audit: assert via Robolectric test that constructing an `AssetEntity` with `class=vehicle` and invoking `DepreciationHelper` + `RevalueAssetFlow` + `AssetDetailScreen` does not open any network sockets. (Same shape as the "no telemetry" smoke tests elsewhere in the family.)
 
+## Plugin shape
+
+The local depreciation-curve helper is intrinsic (no network), not a
+plugin. If a future paid-tier broker-of-vehicle-prices (KBB / Schwacke
+/ etc.) became viable AND license-compatible AND ToS-compatible, it
+would be a plugin off by default per the plugin architecture in
+[`connector-plugins.md`](connector-plugins.md). Today none qualify;
+the asset class is manual-only and the depreciation helper is the
+only computational aid.
+
 ### References
 
+- Plugin architecture authority: [`connector-plugins.md`](connector-plugins.md)
 - Schwacke (DE B2B residual-value, paid) — <https://www.schwacke.de/>
 - DAT (DE B2B residual-value, paid) — <https://www.dat.de/>
 - Autoscout24 AGB (ToS forbids scraping) — <https://www.autoscout24.de/help/agb>

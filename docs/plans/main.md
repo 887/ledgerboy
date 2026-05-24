@@ -10,8 +10,9 @@ _Repo skeleton, README, CLAUDE.md, this plan, and the per-area research prompts 
 - **UI:** Jetpack Compose + **Material 3 Expressive** (M3E from day one — inherited gotchas in [`m3-expressive.md`](m3-expressive.md))
 - **UI shell:** vertical navigation rail + top bar with buttons + settings catalog DSL + AboutScreen + LicensesScreen — **copied from tonearmboy** ([`ui-shell.md`](ui-shell.md))
 - **Data:** Room (ledger: accounts, transactions, asset registry, asset valuations, budgets, FX rate cache), DataStore (preferences), SAF / `DocumentFile` (import files — no MediaStore, no `READ_EXTERNAL_STORAGE`). Encrypted database is research-gated ([`security-research.md`](security-research.md)).
-- **Banking:** Direct-from-device. EBICS + FinTS/HBCI + PSD2 + file import (CSV / QIF / OFX / MT940 / CAMT.053). Per-source research-gated ([`banking-research.md`](banking-research.md)).
-- **Asset valuation:** Per-class research-gated ([`asset-research.md`](asset-research.md)). Real estate manual + periodic; collectibles / securities / vehicles each have their own connector decision.
+- **Connectors:** Every connector is a **plugin, disabled by default** — banking, asset prices, FX, file import, regional indexes. No aggregator middlemen, no paid-SaaS pricing services, direct-to-source-of-truth only. Locked authority: [`connector-plugins.md`](connector-plugins.md).
+- **Banking:** Direct-from-device, direct-to-bank. Per-bank PSD2-direct plugins (Berlin Group NextGenPSD2) + roll-our-own FinTS-client plugin + per-format import plugins (CSV / QIF / OFX / MT940 / CAMT.053). Per-source research-gated ([`banking-research.md`](banking-research.md) + per-source `banking-*.md`).
+- **Asset valuation:** Per-class plugin connectors, all off by default ([`asset-research.md`](asset-research.md) + per-class `asset-*.md`). Real estate / vehicles / generic manual + periodic (regional-index helpers as optional plugins); securities via per-broker plugins; crypto via per-exchange + on-chain RPC plugins; collectibles via Scryfall / pokemontcg.io / YGOPRODeck plugins.
 - **Charts:** Compose-native, research-gated ([`dataviz-research.md`](dataviz-research.md)).
 - **Money:** integer minor units on a `Money` value class — never `Float` / `Double` / `BigDecimal` for amounts.
 - **Build front-end:** Google's [Android CLI](https://developer.android.com/tools/agents/android-cli) (`android` command, launched April 2026). Wraps Gradle, SDK, install, run. **No Android Studio.**
@@ -63,11 +64,27 @@ Goal: a buildable, sideload-able APK that boots into a blank Compose screen wire
 
 ---
 
-## Phase B — banking connectors (research-gated)
+## Phase X — connector plugin runtime
 
-**Goal:** at least one bank connector is wired end-to-end, fetches a transaction list, and writes it into the ledger as `NormalizedTransaction` rows. The connector lives behind a narrow `BankConnector` interface; subsequent connectors land as new implementations.
+**Goal:** the host-side scaffolding every connector plugin builds on. Lands before any individual connector plugin so that Phase B+ are each just "implement `ConnectorPlugin` for one source." Locked architecture in [`connector-plugins.md`](connector-plugins.md).
 
-**Gated on:** [`banking-research.md`](banking-research.md) and the per-source decision docs it spawns (`banking-ebics.md`, `banking-fints.md`, `banking-psd2.md`, `banking-import.md`). Sub-steps are deferred to the research output — when the first connector is chosen, expand the sub-step list here.
+- [ ] **X.1** `ConnectorPlugin` interface + `PluginCategory` enum + `PluginState` state-machine in `app/.../plugins/api/`.
+- [ ] **X.2** `PluginManifest` singleton listing every shipped plugin (initially empty — populated as plugins land in Phase B+).
+- [ ] **X.3** Per-plugin DataStore namespace + `PluginConfigStore` helper for plugins to persist config without colliding.
+- [ ] **X.4** `PluginNetworkGuard` OkHttp `Interceptor` rejecting requests not originating from `Active` plugins; per-plugin bytes-in/out / fetch-count / error-count accumulators.
+- [ ] **X.5** `PluginScheduler` (WorkManager) — per-plugin schedule-or-manual; respects the per-plugin background-sync opt-in; honours disable kill-switch within one tick.
+- [ ] **X.6** Settings → Plugins screen — accordion by category, per-plugin cards with state chip + toggle + Configure button; built on the Settings catalog DSL from [`ui-shell.md`](ui-shell.md).
+- [ ] **X.7** Settings → Plugins → Network usage sub-screen — per-plugin totals + endpoint list + privacy statement; user-visible audit.
+- [ ] **X.8** Per-plugin Configure flow shell — opens the plugin's `@Composable ConfigScreen()`, provides the SAF / Keystore / strings helpers; "Test connection" runs one fetch with explicit user confirmation before transitioning state to `Active`.
+- [ ] **X.9** Robolectric tests: state-machine transitions, network-guard rejection of disabled plugins, scheduler kill-switch latency.
+
+---
+
+## Phase B — first banking connector plugin (research-gated)
+
+**Goal:** at least one banking `ConnectorPlugin` is wired end-to-end on top of the Phase X runtime, fetches a transaction list, and writes it into the ledger as `NormalizedTransaction` rows. Plugin is `disabled` by default; the user enables, configures (bank picker / credentials / OAuth consent), runs "Test connection", and only then does it transition to `Active` and start fetching.
+
+**Gated on:** [`banking-research.md`](banking-research.md) and the per-source decision docs it spawns — [`banking-psd2.md`](banking-psd2.md) (per-bank PSD2-direct via Berlin Group NextGenPSD2), [`banking-fints.md`](banking-fints.md) (roll-our-own FinTS-client plugin, ~3,300 LOC), [`banking-import.md`](banking-import.md) (per-format import plugins as the universal fallback), [`banking-fx.md`](banking-fx.md) (ECB-direct + Bundesbank-direct FX plugins), [`banking-ebics.md`](banking-ebics.md) (rejected — out of personal-banking reach). Sub-steps are deferred to the research output; when the first plugin is chosen, expand the sub-step list here. Likely first-to-ship is the `fints-client` plugin (covers Sparkassen + Volksbanken + most German retail banks in one plugin) or a CSV import plugin (lowest setup friction, universal).
 
 ---
 
@@ -81,9 +98,9 @@ Goal: a buildable, sideload-able APK that boots into a blank Compose screen wire
 
 ## Phase D — multi-currency + FX rate cache
 
-**Goal:** every `Money` round-trips through the FX cache when displayed in the user's base currency. FX rates fetched on a schedule from the chosen source. Base-currency conversion is a `MoneyConverter` that the UI uses; the stored amount stays in the transaction's native currency.
+**Goal:** every `Money` round-trips through the FX cache when displayed in the user's base currency. FX rates fetched on a schedule by whichever FX plugin(s) the user has enabled (ECB-direct or Bundesbank-direct — both off by default). Base-currency conversion is a `MoneyConverter` that the UI uses; the stored amount stays in the transaction's native currency. If no FX plugin is enabled, the user enters rates manually (intrinsic, no plugin needed).
 
-**Gated on:** [`banking-research.md`](banking-research.md) (FX rate source decision lives in there). Sub-steps expand once the FX source is locked.
+**Gated on:** Phase X (plugin runtime) and [`banking-fx.md`](banking-fx.md). Sub-steps expand once the FX plugin lands as an implementation of `ConnectorPlugin` in the `Fx` category.
 
 ---
 
@@ -127,9 +144,9 @@ Sub-steps expand once Phase F lands. Categorization rule engine is research-gate
 
 ---
 
-## Phase J — asset valuation connectors (research-gated)
+## Phase J — asset valuation connector plugins (research-gated)
 
-**Goal:** per asset class, an `AssetValuationSource` connector that either fetches a current price (securities) or accepts a periodic manual revaluation (real estate / vehicles). Connectors land one at a time, gated on per-class decision docs from [`asset-research.md`](asset-research.md).
+**Goal:** per asset class, a `ConnectorPlugin` (in the `AssetPrice` or `RegionalIndex` category) that either fetches a current price (securities via per-broker plugins, crypto via per-exchange or on-chain RPC plugins, collectibles via Scryfall / pokemontcg.io / YGOPRODeck) or surfaces a regional-index hint at the manual revaluation moment (real estate via Häuserpreisindex / BORIS / UK HPI / FHFA HPI). All plugins ship disabled by default. Plugins land one at a time on top of the Phase X runtime, gated on per-class decision docs from [`asset-research.md`](asset-research.md) and the per-class `asset-*.md` files.
 
 ---
 
@@ -151,7 +168,7 @@ Sub-steps expand once Phases B / C / E land.
 
 ## Phase M — settings (full catalog)
 
-**Goal:** every research-decision surface lands as a settings entry — base currency, FX source + cadence, banking connectors (per-source credential management), import-watch folders, theming, biometric-gate toggle, sample-data toggle (for screenshots / store listings).
+**Goal:** every research-decision surface lands as a settings entry — base currency, **Settings → Plugins** (the per-plugin enable/configure/state UI from Phase X.6 — this is now the canonical home for every banking / asset / FX / import / regional-index connector's credential management and per-source toggles), **Settings → Plugins → Network usage** (the audit surface from Phase X.7), import-watch folders, theming, biometric-gate toggle, sample-data toggle (for screenshots / store listings).
 
 Sub-steps expand alongside the research-round outputs.
 
@@ -188,7 +205,7 @@ Sub-steps expand once everything above lands.
 
 ## Phase Q — translations
 
-**Goal:** first non-English locale lands. German (DACH, since EBICS / FinTS heavy) is the natural first target.
+**Goal:** first non-English locale lands. German (DACH, since the FinTS-client plugin + per-bank PSD2-direct DACH plugins are the v1 banking surface) is the natural first target.
 
 Mirrors tonearmboy / whisperboy translations workflow — user + Claude per-language, English canonical, missing keys fall back to English at runtime, no third-party translation service.
 

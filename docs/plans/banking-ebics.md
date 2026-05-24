@@ -213,4 +213,20 @@ If the trigger fires (permissive Kotlin EBICS lib appears, user moves to CH reta
 - [ ] **B-ebics.18** Update `oss-licenses.md` and `LicensesScreen` with the EBICS library SPDX (whichever was chosen in B-ebics.1) and the Bouncy Castle SPDX.
 - [ ] **B-ebics.19** Tick `main.md` Phase B sub-steps; mark `banking-ebics.md` `## Status: ✅ DONE` with the jj change ID.
 
-> **Note:** This checklist exists as a future map, not a current commitment. The Decision above is **REJECT for v1**. Current Phase B work focuses on FinTS (DE personal) + GoCardless PSD2 (EU broad) + file import (universal fallback). Revisit this file only on a trigger.
+> **Note:** This checklist exists as a future map, not a current commitment. The Decision above is **REJECT for v1**. Current Phase B work focuses on the `fints-client` plugin ([`banking-fints.md`](banking-fints.md)) for DE personal, per-bank PSD2-direct plugins ([`banking-psd2.md`](banking-psd2.md)) for EU breadth, and the file-import plugins ([`banking-import.md`](banking-import.md)) as the universal fallback. Revisit this file only on a trigger.
+
+---
+
+## In light of the plugin architecture
+
+EBICS would have been a plugin like every other source if it had passed
+the retail-coverage gate. It didn't — Sparkasse / Volksbank / DKB / etc.
+all gate EBICS behind business contracts. The plugin model does not
+revive a source the user cannot use. EBICS stays rejected.
+
+See [`connector-plugins.md`](connector-plugins.md) for the locked
+architecture; if a future trigger fires (per-Decision above), the EBICS
+implementation would slot in as one more `ConnectorPlugin` of category
+`Banking`, off by default, with a `ConfigScreen()` covering the
+key-generation + INI-letter + activation-polling flow described in this
+file's checklist.

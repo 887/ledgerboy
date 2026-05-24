@@ -1,6 +1,6 @@
 # ledgerboy — Claude instructions
 
-Modern Android personal-finance / budget / multi-asset tracker. Kotlin + Jetpack Compose + Material 3 Expressive + Room + DataStore + SAF + a direct-from-device banking stack (EBICS / FinTS / PSD2 / file import). Built entirely from the CLI, no Android Studio required, no QEMU emulator. Sibling app to [tonearmboy](https://github.com/887/tonearmboy), [whisperboy](https://github.com/887/whisperboy), [shutterboy](https://github.com/887/shutterboy), [strictlykeptboy](https://github.com/887/strictlykeptboy), [pageboy](https://github.com/887/pageboy) — same toolchain and conventions, different data model.
+Modern Android personal-finance / budget / multi-asset tracker. Kotlin + Jetpack Compose + Material 3 Expressive + Room + DataStore + SAF + a direct-from-device, plugin-architected connector stack (FinTS roll-our-own + per-bank PSD2-direct + file import + per-broker / per-exchange / community-open-data asset connectors). Every connector is a plugin, disabled by default — see [`docs/plans/connector-plugins.md`](docs/plans/connector-plugins.md). Built entirely from the CLI, no Android Studio required, no QEMU emulator. Sibling app to [tonearmboy](https://github.com/887/tonearmboy), [whisperboy](https://github.com/887/whisperboy), [shutterboy](https://github.com/887/shutterboy), [strictlykeptboy](https://github.com/887/strictlykeptboy), [pageboy](https://github.com/887/pageboy) — same toolchain and conventions, different data model.
 
 ## Architectural decisions (locked)
 
@@ -11,9 +11,10 @@ Modern Android personal-finance / budget / multi-asset tracker. Kotlin + Jetpack
 - **Data, store:** Room for the ledger (accounts, transactions, asset registry, asset valuations, budgets, FX rates). DataStore (Preferences) for user prefs. **Encrypted database is research-phase locked-pending** — SQLCipher vs. Android Keystore key wrapping, see [`docs/plans/security-research.md`](docs/plans/security-research.md). Default expectation: SQLCipher with the key wrapped in Android Keystore (Strongbox where available), biometric prompt gating optional.
 - **Storage, import files:** **SAF only** (Storage Access Framework, `DocumentFile` + `OpenDocument` / `OpenDocumentTree`). No `READ_EXTERNAL_STORAGE`, no MediaStore. CSV / QIF / OFX / MT940 / CAMT.053 import files live wherever the user keeps them; SAF is the modern Android-correct path. See "Why SAF (not MediaStore)" below.
 - **Settings, preferences:** DataStore (Preferences) for theme, default currency, base currency for net-worth view, FX rate source, refresh cadence, etc. Per-account settings (display order, hidden-from-net-worth flag, etc.) live on the `AccountEntity` row.
-- **Banking:** Direct-from-device. No server-side aggregator that we operate. Per-source decisions (EBICS lib, FinTS lib, PSD2 aggregator) gated on research — see [`docs/plans/banking-research.md`](docs/plans/banking-research.md). Default expectation: keep each connector behind a narrow `BankConnector` interface so the data layer doesn't care which source filled the rows.
-- **FX rates:** Cache locally, refresh on a schedule (research-phase decision on cadence + source — see `banking-research.md`).
-- **Asset valuation:** Per-class connectors behind a narrow `AssetValuationSource` interface. Real estate is manual + periodic; trading-card / securities / vehicle valuations are research decisions per class — see [`docs/plans/asset-research.md`](docs/plans/asset-research.md).
+- **Connectors are plugins, disabled by default.** Every banking connector, asset-price connector, FX source, file-import parser, and regional-index helper is a plugin in the `app/src/main/java/com/eight87/ledgerboy/plugins/<plugin-id>/` namespace. Plugins are off by default; the user enables and configures per source. Nothing phones home until a plugin is `Active`. No aggregator middlemen (GoCardless, Tink, Plaid, Salt Edge, TrueLayer). No paid-SaaS pricing services (Alpha Vantage, finnhub.io, CoinGecko, CoinMarketCap). Direct-to-source-of-truth only. The license gate (MIT / Apache-2.0 / BSD / MPL-2.0) applies to plugin dependencies the same as to core deps because everything compiles into the single APK. See [`docs/plans/connector-plugins.md`](docs/plans/connector-plugins.md) for the full architecture.
+- **Banking:** Direct-from-device, direct-to-bank. Per-bank PSD2-direct plugins (Berlin Group NextGenPSD2) + a single roll-our-own FinTS-client plugin (~3,300 LOC, permissively licensed) + per-format import plugins (CSV / QIF / OFX / MT940 / CAMT.053). Per-source decisions in [`docs/plans/banking-research.md`](docs/plans/banking-research.md) and the per-source `banking-*.md` files. Each connector implements the `ConnectorPlugin` interface (see `connector-plugins.md`) and emits normalized rows to the host.
+- **FX rates:** Cache locally, refresh on a schedule. Two source plugins — ECB direct (`eurofxref-daily.xml`) and Bundesbank direct — both disabled by default. See `banking-fx.md`.
+- **Asset valuation:** Per-class connector plugins. Real estate / vehicles / generic = manual + periodic (regional-index helpers like Häuserpreisindex / BORIS / UK HPI / FHFA HPI ship as plugins, off by default). Securities = per-broker plugins (IBKR TWS/Gateway, Trade Republic, Comdirect, etc.). Crypto = per-exchange plugins (Kraken / Coinbase / Binance read-only API keys) plus on-chain RPC plugins (user-supplied node URL). Collectibles = Scryfall / pokemontcg.io / YGOPRODeck plugins (free, direct, open-data — but still off by default). Each implements `ConnectorPlugin`; per-class research in [`docs/plans/asset-research.md`](docs/plans/asset-research.md) and the per-class `asset-*.md` files.
 - **Charts:** Compose-native charting library, picked at research time — see [`docs/plans/dataviz-research.md`](docs/plans/dataviz-research.md). Candidates: Vico, YCharts, KMP-charts, Compose Charts, write-our-own with Canvas.
 - **Build front-end:** [Google's Android CLI](https://developer.android.com/tools/agents/android-cli) (`android` command, launched April 2026). Wraps project creation, SDK management, build, install, and run. **Do not introduce Android Studio project files** (`.idea/`, `*.iml`).
 - **Build back-end:** Gradle (driven by the Android CLI; the wrapper is committed to the repo).
@@ -38,10 +39,20 @@ Practical implications, enforced in every commit:
 - **Screenshots in the README, store listing, plan docs, and PR descriptions use the fictional sample data only.** If a screenshot accidentally contains real numbers it gets retaken before commit, not blurred.
 - **Demos with real data happen locally.** The user may, on their own machine, point ledgerboy at their real bank export. That export, that database, those screenshots never enter version control. The `.gitignore` denies `*.csv` / `*.qif` / `*.ofx` / `*.mt940` / `*.camt053` outside `app/src/test/resources/fixtures/` precisely to make accidental commits hard.
 - **Agents generating example transactions / budgets / asset values use obviously-fictional values.** No "looks plausible" amounts; explicit synthetic round numbers, brand-name placeholders, dates in the demo year (use 2026-01-01 through 2026-12-31).
-- **No real bank names** in sample data unless the bank's own brand is unavoidable for a UI explanation (e.g. an EBICS host URL example). Even then, prefer the published sandbox example (e.g. `https://ebics.example.com/`).
+- **No real bank names** in sample data unless the bank's own brand is unavoidable for a UI explanation (e.g. a PSD2-direct endpoint URL example for the per-bank plugin's `ConfigScreen()`). Even then, prefer the published sandbox example (e.g. `https://psd2-sandbox.example-bank.example/`).
 - **No telemetry, ever, by default.** Crash reporting, usage analytics, "anonymous" feature usage — all opt-in, all transparent about payload contents, none of them on out of the box.
 
 If a future agent surfaces real numbers — even accidentally, even in a comment, even in a unit test — strip them in the same review pass, no exceptions, no asking.
+
+## Network posture — zero calls out of the box
+
+Companion rule to the privacy posture, and the operational consequence of the plugin architecture (see [`docs/plans/connector-plugins.md`](docs/plans/connector-plugins.md)):
+
+- **Out-of-the-box ledgerboy makes zero network calls.** No telemetry, no startup pings, no plugin-update-check, no remote-manifest fetch, no crash reporter, no analytics. A fresh install with no plugins enabled is, on the wire, completely silent.
+- **The user enables every external endpoint by hand.** Plugins ship disabled. The state machine is `disabled → enabled → configured → active`, and only `active` plugins fetch. There is no "starter pack", no "recommended set", no first-run wizard that flips anything on automatically.
+- **A `PluginNetworkGuard` OkHttp interceptor enforces this at the transport layer** — any HTTP request not originating from an `Active` plugin is rejected. This is the runtime guarantee that backs the documentation claim.
+- **Per-plugin transparency is user-facing.** Settings → Plugins → Network usage shows per-plugin bytes-in / bytes-out / fetch count / error count / actual endpoint URLs called. Disable any plugin to unconditionally halt its network activity within one scheduler tick.
+- **Agents must not introduce code that calls out without going through a plugin.** No `OkHttpClient` instances outside the guarded shared client. No "quick check" fetches in `Application.onCreate()`. No background telemetry. If a feature needs network, it lands as a plugin.
 
 ## Required CLIs and MCP servers
 
@@ -120,7 +131,7 @@ One of:
     -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect &
   ```
 
-For ledgerboy specifically, the AVD covers the ledger / charts / import / settings layer fine, but **biometric prompt + Strongbox-backed key generation + EBICS handshake behaviour should be verified on a real phone** — the AVD's keystore is software-emulated and doesn't reflect Strongbox semantics; EBICS handshakes against a sandbox bank work from the AVD but real-bank certificate pinning is a phone-only test.
+For ledgerboy specifically, the AVD covers the ledger / charts / import / settings layer fine, but **biometric prompt + Strongbox-backed key generation + per-bank PSD2 OAuth + FinTS PIN/TAN handshake behaviour should be verified on a real phone** — the AVD's keystore is software-emulated and doesn't reflect Strongbox semantics; OAuth flows and per-bank certificate pinning against a sandbox bank work from the AVD but real-bank pinning + system-browser handoff are phone-only tests.
 
 ## Test loop
 
@@ -166,7 +177,7 @@ For ledgerboy specifically: import file fixtures live at `app/src/test/resources
 
 ## File conventions
 
-- Single-module to start. Split into `:core` / `:data` / `:ui` / `:banking-<source>` only when the single-module size warrants it; do not premature-modularize. The banking-connector sub-modules are the most plausible early split because they pull heavy third-party deps; revisit after the first connector ships.
+- Single-module to start. Split into `:core` / `:data` / `:ui` / `:plugin-<id>` only when the single-module size warrants it; do not premature-modularize. Per-plugin sub-modules are the most plausible early split because individual connector plugins can pull non-trivial third-party deps; revisit after the first few plugins ship. Plugins themselves live under `app/src/main/java/com/eight87/ledgerboy/plugins/<plugin-id>/` either way — compiled in, listed in `PluginManifest`, never dynamically loaded.
 - Package root: `com.eight87.ledgerboy`.
 - Composable functions: PascalCase, no `@Composable` on private helpers unless they take a Modifier.
 - ViewModels: one per screen, talk to the data layer via repository interfaces.
@@ -182,19 +193,20 @@ The codebase follows SOLID where it earns its keep. Kotlin + Compose change *how
 - **O — Open/Closed.** Prefer adding a new sealed-class case / new strategy implementation over modifying an existing `when`/`if` chain. The `BankConnector` interface + per-source sealed-class registry is the canonical example: new connectors land as new implementations + new registry entries, not as `if (source == "ebics") { ... }` chains.
 - **L — Liskov Substitution.** Subtypes (or sealed-type variants) must honour the contract of the parent. Every `BankConnector` returns the same `List<NormalizedTransaction>` shape regardless of upstream format.
 - **I — Interface Segregation.** Don't pass a fat type when a narrow one would do. The ViewModel that renders the budget screen takes a `BudgetSource` (a couple of methods), not the whole `LedgerRepository`.
-- **D — Dependency Inversion.** High-level modules (UI, scheduled-refresh orchestration) depend on abstractions, not concrete classes. The `AppGraph` is the composition root — it's the *only* place that knows the concrete types (concrete EBICS client, concrete FX-rate fetcher, concrete Room DAOs).
+- **D — Dependency Inversion.** High-level modules (UI, scheduled-refresh orchestration) depend on abstractions, not concrete classes. The `AppGraph` is the composition root — it's the *only* place that knows the concrete types (concrete `PluginManifest`, concrete `PluginNetworkGuard`, concrete `PluginScheduler`, concrete Room DAOs). Individual plugin instances are wired in via the manifest, not name-checked anywhere in the host.
 
 ## Open-source licenses
 
 Every dep that ships in the APK is inventoried at build time by the [Licensee](https://github.com/cashapp/licensee) Gradle plugin (config block in `app/build.gradle.kts`); the resulting `artifacts.json` is copied into `app/src/main/assets/licenses/` and rendered by `LicensesScreen` (linked from About → "Open-source licenses"). Allowed SPDX ids: `Apache-2.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause`, `MPL-2.0` (the last only if a banking library demands it and there's no Apache/MIT alternative — see [`docs/plans/oss-licenses.md`](docs/plans/oss-licenses.md)).
 
-**License compatibility is load-bearing for ledgerboy more than for the other family members:** banking / finance libraries on the JVM are disproportionately LGPL or GPL. **No GPL/AGPL/LGPL deps land in this app.** When evaluating a candidate connector library (EBICS client, FinTS client, OFX parser), the SPDX gate is non-negotiable. If a candidate fails the gate, the research plan documents the alternative or the build-it-ourselves cost.
+**License compatibility is load-bearing for ledgerboy more than for the other family members:** banking / finance libraries on the JVM are disproportionately LGPL or GPL. **No GPL/AGPL/LGPL deps land in this app — including transitive deps pulled in by any plugin.** Because every plugin compiles into the single APK (see [`docs/plans/connector-plugins.md`](docs/plans/connector-plugins.md)), an LGPL plugin dep would infect the whole APK. When evaluating a candidate connector library (FinTS client, OFX parser, MT940 parser, per-broker SDK), the SPDX gate is non-negotiable. If a candidate fails the gate, the research plan documents the alternative or the build-it-ourselves cost (this is exactly why FinTS ships as a roll-our-own client rather than wrapping `hbci4java`).
 
 When adding a new `implementation` dep, run `./gradlew :app:licenseeAndroidDebug` and confirm the SPDX is in the allowlist. If not, either add it via `licensee { allow("…") }` (with a brief justification comment) or pick a different library.
 
 ## Plan files
 
-- [`docs/plans/main.md`](docs/plans/main.md) — phased build plan. Phase 0 + Phase A have sub-step checkboxes; Phase B+ are stub headers gated on the per-area research plans.
+- [`docs/plans/main.md`](docs/plans/main.md) — phased build plan. Phase 0 + Phase A have sub-step checkboxes; Phase X (plugin runtime) lands before Phase B; Phase B+ are stub headers gated on the per-area research plans.
+- [`docs/plans/connector-plugins.md`](docs/plans/connector-plugins.md) — **locked authority** for the connector plugin architecture (disabled-by-default, no aggregators, no paid-SaaS pricing, direct-to-source). Every banking / asset / FX / import / regional-index decision threads through here.
 - [`docs/plans/seed-prompt.md`](docs/plans/seed-prompt.md) — the user's original brief, verbatim, plus a family-context intro for fresh agents.
 - [`docs/plans/ui-shell.md`](docs/plans/ui-shell.md) — prescriptive: copy tonearmboy's vertical-rail + top-bar + settings catalog DSL + AboutScreen + LicensesScreen. Research agents do not redesign these surfaces.
 - [`docs/plans/m3-expressive.md`](docs/plans/m3-expressive.md) — inherited M3E gotchas from tonearmboy. Start with the bugs already fixed.

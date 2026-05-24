@@ -1,11 +1,20 @@
 # ledgerboy — asset: collectibles (trading cards focus)
 
-## Status: RESEARCH — decisions locked, Phase J sub-steps queued
+## Status: REWRITTEN 2026-05-24 — each automated source reframed as a plugin off by default per [`connector-plugins.md`](connector-plugins.md); Scryfall / pokemontcg.io / YGOPRODeck remain the v1 candidates because they are free, direct, community-open-data; no auto-enable
 
 Per-class decision file spawned from [`asset-research.md`](asset-research.md). Covers
 the **collectibles** asset class with **trading cards** as the v1 driver
 (user's explicit example) and a forward path for adjacent collectible
 sub-classes (coins, comics, watches, sneakers).
+
+The technical analysis of each card-data source (Scryfall, pokemontcg.io,
+YGOPRODeck) below is preserved verbatim from the original research; the
+*recommendation* is reframed in plugin vocabulary. **No source is enabled
+by default.** Every source ships as a `ConnectorPlugin` in the
+asset-price category, disabled by default, configured per-user. See
+[`connector-plugins.md`](connector-plugins.md) for the architectural
+authority (plugin lifecycle, Configure flow, Test connection, per-plugin
+transparency, network kill-switch).
 
 ## What it is
 
@@ -242,26 +251,47 @@ Display price = `upstreamPrice(finish) × conditionMultiplier × quantity`.
 
 ## Fit recommendation
 
-- **MTG via Scryfall:** **automated connector** (v1, ships first).
-- **Pokémon via pokemontcg.io:** **automated connector** (v1.x, after
-  Scryfall lands).
-- **Yu-Gi-Oh! via YGOPRODeck:** **automated connector** (v1.x).
+Every source below is a `ConnectorPlugin` in category `AssetPrice`,
+**disabled by default**. Users enable per source via Settings → Plugins,
+then Configure (where Configure is a no-op or a single API-key field),
+then Test connection. Only after Test passes does the plugin transition
+to `Active` and start fetching.
+
+- **MTG via Scryfall (plugin `scryfall`):** v1 plugin, ships first.
+  Disabled by default. No API key. Configure flow is a no-op (just a
+  privacy-statement screen + a Test connection button that resolves a
+  known-stable card id). Off until the user enables it.
+- **Pokémon via pokemontcg.io (plugin `pokemontcg-io`):** v1.x plugin,
+  after Scryfall lands. Disabled by default. Configure flow asks the
+  user for their free dev.pokemontcg.io API key.
+- **Yu-Gi-Oh! via YGOPRODeck (plugin `ygoprodeck`):** v1.x plugin.
+  Disabled by default. No API key. Configure flow is a no-op +
+  privacy-statement screen + Test connection.
 - **Sports cards (COMC / PSA / etc.):** **manual-only** (ToS-disqualified).
+  Not a plugin candidate.
 - **Cardmarket / TCGplayer direct:** **deferred pending paid tier
-  access**, not v1.
+  access**, not v1. Would be plugins off by default if ever reconsidered.
 - **Coins / comics / watches / sneakers:** **manual-only**, no free
-  feed exists.
+  feed exists. Not plugin candidates today.
 
 ## Cross-cutting
 
-### `CollectibleSource` interface
+### `CollectibleSource` interface (plugin-internal)
+
+Each collectible source is one `ConnectorPlugin` per the lock in
+[`connector-plugins.md`](connector-plugins.md). The plugin internally
+exposes the narrow card-data shape below; the host only sees the
+`ConnectorPlugin` surface (state machine, ConfigScreen, fetch). The
+internal interface lives inside each plugin's package and is not
+public API.
 
 ```kotlin
+// Internal to each card-data plugin.
 interface CollectibleSource {
-    val id: String                // "scryfall", "pokemontcg", "ygoprodeck"
+    val id: String                // "scryfall", "pokemontcg-io", "ygoprodeck"
     val attribution: AttributionLine
     val rateLimit: RateLimitPolicy
-    val ttl: Duration             // 1.days for all three v1 sources
+    val ttl: Duration             // 1.days for all three v1 plugins
 
     suspend fun resolve(query: CardQuery): Result<UpstreamCardId>
     suspend fun fetchPrice(id: UpstreamCardId, finish: Finish): Result<Money>
@@ -269,10 +299,11 @@ interface CollectibleSource {
 }
 ```
 
-Each source implementation lives in its own file under
-`com.eight87.ledgerboy.asset.collectibles.<source>`. Selection is
-sealed-class + when over the holding's `game`, per the SOLID
-Open/Closed bullet in `CLAUDE.md`.
+Each plugin's implementation lives in its own module under
+`com.eight87.ledgerboy.plugins.<plugin-id>/`. Selection at fetch time
+is sealed-class + when over the holding's `game`, per the SOLID
+Open/Closed bullet in `CLAUDE.md`. Adding a fourth card game = a new
+plugin module + a new manifest entry; the host code does not change.
 
 ### Caching
 
@@ -301,22 +332,29 @@ non-price metadata fetches.
 
 ### Attribution surface
 
-Per Scryfall / pokemontcg.io / YGOPRODeck ToS, attribution is visible:
+Per Scryfall / pokemontcg.io / YGOPRODeck ToS, attribution is visible.
+Per the plugin architecture's transparency requirement, every plugin
+already surfaces its `attribution` + `privacyStatement` in
+**Settings → Plugins**. The collectibles plugins reuse that channel
+rather than maintaining a parallel "Data sources" screen:
 
-1. **Settings → Data sources** (linked from the main settings catalog
-   per [`ui-shell.md`](ui-shell.md)) lists every active price source
-   with a one-line credit and a link to its site.
+1. **Settings → Plugins → Asset prices** (the plugin-categorised
+   accordion from [`connector-plugins.md`](connector-plugins.md)) lists
+   every plugin (disabled or active) with state chip, license SPDX, a
+   one-line credit, and a link to its upstream site. This subsumes the
+   previously-planned "Settings → Data sources" screen.
 2. **Asset-detail screen** shows a small "via Scryfall" / "via
    pokemontcg.io" / "via YGOPRODeck" caption next to the latest price
-   line.
+   line — drawn from the active plugin's `attribution` line.
 3. **About → Open-source licenses** (the existing
    [`oss-licenses.md`](oss-licenses.md) screen) is for redistributed
-   libraries, not for remote APIs. The Data Sources entry is the right
-   home for API attribution.
+   libraries, not for remote APIs. Per-plugin attribution lives in
+   Settings → Plugins.
 
 All three attribution lines live in `strings.xml` under the
-`data_source_<id>_attribution` naming convention (per the i18n discipline
-rule in CLAUDE.md).
+`plugin_<id>_attribution` naming convention (per the i18n discipline
+rule in CLAUDE.md), matching the per-plugin string layout used by the
+banking and FX plugins.
 
 ### Money shape
 
@@ -329,12 +367,15 @@ sub-field. Cross-currency display goes through the FX cache.
 
 ## Decision
 
-- **v1 automated connector:** **Scryfall** for MTG. Lowest friction
-  (no API key), permissive ToS, the user's explicit example, the
-  first connector to land in Phase J.
-- **v1.x automated connectors:** **pokemontcg.io** for Pokémon TCG
-  (user-provided API key) and **YGOPRODeck** for Yu-Gi-Oh!.
+- **v1 plugin (first to ship):** `scryfall` for MTG. Lowest friction
+  (no API key), permissive ToS, the user's explicit example.
+  **Disabled by default**; user enables in Settings → Plugins → Asset
+  prices.
+- **v1.x plugins:** `pokemontcg-io` for Pokémon TCG (user-provided
+  API key in Configure flow) and `ygoprodeck` for Yu-Gi-Oh!
+  (no API key). Both disabled by default.
 - **Manual-only:** sports cards, coins, comics, watches, sneakers.
+  Not plugin candidates.
 - **Deferred:** Cardmarket direct, TCGplayer direct (paid).
 
 ### `ValuationEvent` write path
@@ -358,42 +399,68 @@ surface a non-blocking "stale price" badge on the holding. Per the
 
 ### Phase J implementation sub-steps
 
-- [ ] **J.1** Define the `CollectibleSource` interface, the
+These all build on the **Phase X host runtime** from
+[`connector-plugins.md`](connector-plugins.md). Phase X lands the
+`ConnectorPlugin` interface, the manifest, the `PluginNetworkGuard`,
+the `PluginScheduler`, the Settings → Plugins screen. Each sub-step
+below is then a single-source plugin implementation on top.
+
+- [ ] **J.1** Define the internal `CollectibleSource` interface, the
   `RateLimitedClient`, the `AttributionLine` data class, the
-  `RateLimitPolicy` data class. No source impls yet. JVM unit tests
-  for the token-bucket spacing logic (Robolectric not required).
-- [ ] **J.2** Implement `ScryfallSource` against
-  `https://api.scryfall.com/` with the required `User-Agent` +
-  `Accept` headers, the 100 ms spacing token bucket, and the
-  `/cards/{set}/{collector_number}` resolution path. Unit-test the
-  JSON parsing against a fixture (`app/src/test/resources/fixtures/`,
-  fictional card IDs only).
-- [ ] **J.3** Wire `ScryfallSource` into the `AssetEntity` model: new
-  asset class enum value `COLLECTIBLE_MTG`, new fields for `set_code`,
-  `collector_number`, `finish`, `condition_grade`. Room migration if
-  schema already shipped; otherwise additive change.
-- [ ] **J.4** Bulk-data fetch path: a `WorkManager` job downloads
+  `RateLimitPolicy` data class — all inside the plugins package, not
+  in the host. No plugin impls yet. JVM unit tests for the token-bucket
+  spacing logic (Robolectric not required).
+- [ ] **J.2** Implement the `scryfall` plugin on top of Phase X.
+  Plugin id `scryfall`, category `AssetPrice`, license `MIT`
+  (Scryfall API is free for personal use, no library license to inherit
+  beyond our own client code). Implements `ConnectorPlugin`:
+  `ConfigScreen()` is a no-op screen showing the privacy statement +
+  a Test connection button; `fetch()` wraps an internal
+  `ScryfallSource` against `https://api.scryfall.com/` with the
+  required `User-Agent` + `Accept` headers, the 100 ms spacing token
+  bucket, and the `/cards/{set}/{collector_number}` resolution path.
+  Unit-test the JSON parsing against a fixture
+  (`app/src/test/resources/fixtures/`, fictional card IDs only).
+  **Disabled by default**; registers in `PluginManifest.all`.
+- [ ] **J.3** Wire the `scryfall` plugin into the `AssetEntity` model:
+  new asset class enum value `COLLECTIBLE_MTG`, new fields for
+  `set_code`, `collector_number`, `finish`, `condition_grade`. Room
+  migration if schema already shipped; otherwise additive change. The
+  "Add trading card" form refuses to save an MTG card if the `scryfall`
+  plugin is not `Active` (with a one-tap "Enable Scryfall plugin" link
+  to Settings → Plugins).
+- [ ] **J.4** Bulk-data fetch path inside the `scryfall` plugin: a
+  `WorkManager` job (scheduled via `PluginScheduler`) downloads
   Scryfall's daily bulk JSON, indexes it into a Room table keyed by
-  `(set, collector_number)`, and the `ScryfallSource.fetchBulkPrices`
-  uses the index. Documented for collections of > 100 cards.
+  `(set, collector_number)`, and the internal `fetchBulkPrices` uses
+  the index. Documented for collections of > 100 cards.
 - [ ] **J.5** UI: Assets screen adds an "Add trading card" entry; the
   add-card form asks for game + set + collector number + finish +
-  condition + quantity. On save, the connector resolves the upstream
-  ID, fetches the current price, and writes the first
-  `ValuationEvent`.
-- [ ] **J.6** Settings → Data sources screen (new). Renders one row per
-  active source with attribution copy from `strings.xml`. Phase J.6
-  lands the screen with only Scryfall present.
-- [ ] **J.7** Implement `PokemonTcgSource` (Phase J.7). Settings asks
-  the user for their `pokemontcg.io` API key (free, user-provided).
-- [ ] **J.8** Implement `YgoProDeckSource` (Phase J.8). No API key.
-  Enforce the local-image-cache rule (download card images to private
-  storage, never hotlink) at the same time.
-- [ ] **J.9** Condition multiplier table in Settings. Defaults
-  documented above; user can edit per game.
+  condition + quantity. On save, if the relevant plugin is `Active`,
+  the plugin resolves the upstream ID, fetches the current price, and
+  the host writes the first `ValuationEvent`. If the plugin is not
+  `Active`, the form saves the holding with no price and surfaces an
+  enable-the-plugin hint.
+- [ ] **J.6** (Superseded.) Settings → Data sources is replaced by
+  Settings → Plugins → Asset prices from Phase X.6. No separate
+  screen lands; per-plugin attribution rides on the plugin card.
+- [ ] **J.7** Implement the `pokemontcg-io` plugin on top of Phase X.
+  Plugin id `pokemontcg-io`, category `AssetPrice`, license `MIT`.
+  `ConfigScreen()` asks the user for their free dev.pokemontcg.io API
+  key (encrypted at rest via the host's Keystore-wrapping helper, per
+  [`security-research.md`](security-research.md)). Test connection
+  performs one card lookup. **Disabled by default.**
+- [ ] **J.8** Implement the `ygoprodeck` plugin on top of Phase X.
+  Plugin id `ygoprodeck`, category `AssetPrice`, license `MIT`. No
+  API key. Enforce the local-image-cache rule (download card images
+  to private storage, never hotlink) inside the plugin. Test
+  connection performs one card lookup. **Disabled by default.**
+- [ ] **J.9** Condition multiplier table in Settings → app-level
+  (not per-plugin, because it applies to all card games uniformly).
+  Defaults documented above; user can edit per game.
 - [ ] **J.10** Manual-collectible flow (coins / comics / watches /
   sneakers / sports cards): user names the asset, picks a currency,
   enters a value, sets a "remind me to revalue every N months"
-  cadence. Shares the `ValuationEvent` schema; just no automatic
-  fetches. Lands alongside the generic asset class in the parallel
+  cadence. Shares the `ValuationEvent` schema; just no plugin
+  involvement. Lands alongside the generic asset class in the parallel
   agent's manual-cluster Phase J work.

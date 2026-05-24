@@ -1,6 +1,6 @@
 # ledgerboy — asset class: generic (catch-all manual valuation)
 
-## Status: DECISION — manual-only, ownership-fraction supported, no automated source
+## Status: DECISION — manual-only, ownership-fraction supported, no automated source, no plugin candidate ever per [`connector-plugins.md`](connector-plugins.md)
 
 Per-class research deliverable for the **generic** asset class — the catch-all bucket for assets that don't fit a more specific class. Part of the manual-valuation cluster (see [`asset-realestate.md`](asset-realestate.md), [`asset-vehicles.md`](asset-vehicles.md)). Distinct from the automated-feed cluster (collectibles / securities / crypto).
 
@@ -161,10 +161,19 @@ Shares the `AssetEntity` / `ValuationEventEntity` / wizard scaffolding with real
 - [ ] **J.G.11** Sample data fixtures (fictional): one of each sub-type — "Acme Sample Jewelry (€2,000.00)", "Demo Art Print (€800.00, 50% share)", "Test Business Stake (€50,000.00, 33% share)", "Sample Co-owned Boat (€30,000.00, 50% share)", "Demo Pension (€100,000.00)", "Test Receivable from Sample Person (€5,000.00, 20% haircut)". Lives in `app/src/test/resources/fixtures/asset-generic-sample.json`.
 - [ ] **J.G.12** No-network audit: assert via Robolectric test that creating, revaluing, and aggregating any generic-class asset performs zero network I/O. Same shape as `J.V.10`.
 
+## Plugin shape
+
+Generic assets are manual by design — no upstream price source applies.
+The asset class never hosts a plugin; manual revaluation is the only
+flow. See [`connector-plugins.md`](connector-plugins.md) for the
+architecture; the generic class is the single asset class that does
+not appear in the plugin manifest at all.
+
 ### References
 
 - Artnet terms (price database, paid, scraping-forbidden) — <https://www.artnet.com/about/terms-and-conditions.aspx>
 - Chrono24 partner API (watches, commercial / dealer-only) — <https://www.chrono24.com/info/api.htm>
+- Plugin architecture authority: [`connector-plugins.md`](connector-plugins.md)
 - Cluster-mate decisions: [`asset-realestate.md`](asset-realestate.md), [`asset-vehicles.md`](asset-vehicles.md)
 - Parallel cluster (automated feeds): [`asset-collectibles.md`](asset-collectibles.md), [`asset-securities.md`](asset-securities.md), [`asset-crypto.md`](asset-crypto.md) (in flight)
 - Seed: [`asset-research.md`](asset-research.md)

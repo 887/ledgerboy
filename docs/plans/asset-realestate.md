@@ -1,6 +1,6 @@
 # ledgerboy — asset class: real estate
 
-## Status: DECISION — manual-only, with optional revaluation reminders and (optional, post-v1) regional-index hints from public open data
+## Status: DECISION — manual-only, with optional revaluation reminders; post-v1 regional-index hints land as plugins off by default per [`connector-plugins.md`](connector-plugins.md)
 
 Per-class research deliverable for the **real estate** asset class (house / apartment / land). Part of the manual-valuation cluster (see [`asset-vehicles.md`](asset-vehicles.md), [`asset-generic.md`](asset-generic.md)). Cluster-mate to the automated-feed cluster in [`asset-collectibles.md`](asset-collectibles.md) / [`asset-securities.md`](asset-securities.md) / [`asset-crypto.md`](asset-crypto.md).
 
@@ -166,8 +166,31 @@ These ride alongside the vehicle / generic sub-steps in [`asset-vehicles.md`](as
 - [ ] **J.RE.11** Sample data fixture (fictional only): one asset row "Acme Sample House", currency EUR, initial value €500,000.00 dated 2026-01-01, second revaluation €510,000.00 dated 2026-04-01, one comparable sale €495,000.00 dated 2026-02-15. Lives in `app/src/test/resources/fixtures/asset-realestate-sample.json` (under the gitignore exception).
 - [ ] **J.RE.12** (Post-v1, gated) Regional-index hint: per-currency picker maps EUR→Häuserpreisindex / GBP→UK HPI / USD→FHFA HPI. Index value snapshot at each `ValuationEvent` write. Asset detail screen renders "Regional index since your last revaluation: +X%." Strictly informational; never auto-updates value. Defer until at least one public-open-data source is licence-audited and the UI ergonomics question ("does the user actually want this surface?") is answered against the running app.
 
+## Regional-index plugins (post-v1)
+
+The Phase J+ enhancement that reads federal house-price indexes for
+"regional index moved +X% since your last revaluation, consider
+re-anchoring" is a set of plugins per the plugin architecture in
+[`connector-plugins.md`](connector-plugins.md):
+
+- `hauserpreisindex-de` — DE federal Hauserpreisindex from Destatis.
+- `boris-de` — DE per-state Bodenrichtwerte from BORIS.
+- `uk-hpi` — UK House Price Index from gov.uk.
+- `uk-land-registry` — UK Land Registry Price Paid.
+- `fhfa-hpi-us` — US FHFA HPI.
+
+All off by default. User enables per source via Settings → Plugins →
+Regional indexes. Each plugin's Configure flow is minimal (no
+credentials; just a region tag for the per-state ones). Test
+connection performs one open-data file fetch and reports the most
+recent index value. Privacy statement names the government open-data
+endpoint and confirms no per-property data is ever transmitted (the
+plugin reads the public index series only; the user's property
+metadata never leaves the device).
+
 ### References
 
+- Plugin architecture authority: [`connector-plugins.md`](connector-plugins.md)
 - BORIS-D federated portal — <https://www.bodenrichtwerte-boris.de/>
 - Destatis Häuserpreisindex — <https://www.destatis.de/DE/Themen/Wirtschaft/Preise/Baupreise-Immobilienpreisindex/_inhalt.html>
 - HM Land Registry Price Paid Data — <https://www.gov.uk/government/statistical-data-sets/price-paid-data-downloads>

@@ -1,6 +1,6 @@
 # ledgerboy — asset: securities (stocks / ETFs / mutual funds)
 
-## Status: RESEARCH — decisions locked, Phase J sub-steps queued
+## Status: REWRITTEN 2026-05-24 — Alpha Vantage / finnhub.io / Polygon / Twelve Data / Marketstack / Yahoo unofficial all OUT (paid-SaaS pricing intermediaries rejected per the "direct-to-source-of-truth only" lock); pivot to **per-broker plugins** + **manual** + **CSV import**, all disabled by default per [`connector-plugins.md`](connector-plugins.md)
 
 Per-class decision file spawned from [`asset-research.md`](asset-research.md).
 Covers **listed securities**: stocks, ETFs, mutual funds. Crypto lives in
@@ -11,359 +11,534 @@ cluster.
 
 A *security* in ledgerboy is a holding identified by **ticker + exchange**
 that has a daily end-of-day price published by an exchange (or NAV for
-mutual funds). The user enters the position; ledgerboy fetches the price
-once a day and writes one `ValuationEvent(date, value, source)` row per
-fetch. Total position value =
-`unitPrice × quantity` in the security's quote currency, converted to
-the user's display currency via the FX cache (researched by the parallel
-agent).
+mutual funds). The user enters the position; the per-broker plugin (if
+enabled and configured for that broker) reads balances + last-known
+prices directly from the user's broker; alternatively the user imports
+a broker CSV statement, or types positions manually. The host writes
+one `ValuationEvent(date, value, source)` row per fetch / import. Total
+position value = `unitPrice × quantity` in the security's quote currency,
+converted to the user's display currency via the FX cache (researched
+by the parallel agent).
 
 End-of-day pricing is sufficient. Real-time / intraday is not a goal —
 this is a net-worth tracker, not a trading app.
 
-## Source candidates
+## Architectural framing
 
-### Alpha Vantage — **adopt**, v1 default
+Every securities source is a `ConnectorPlugin` per
+[`connector-plugins.md`](connector-plugins.md):
 
-- **What:** Free + paid stock / ETF / FX / crypto data API. Long-lived,
-  broad coverage, user-provided API key.
-- **API:** `https://www.alphavantage.co/query?` — REST + JSON.
-- **Auth:** **user-provided free API key** (the user registers at
-  https://www.alphavantage.co/support/#api-key — no card required).
-- **Rate limit (2026, free tier):** **25 requests / day** at **5
-  requests / minute**. This is a hard drop from the historical 500/day
-  cap (the seed prompt's expectation of 500/day is stale). Sources:
-  https://www.alphavantage.co/premium/ ,
-  https://alphalog.ai/blog/alphavantage-api-complete-guide .
-- **What 25/day means for ledgerboy:** with one end-of-day refresh per
-  holding per day, the free tier comfortably tracks **up to ~25
-  positions per user**. For larger portfolios, the user either upgrades
-  to Alpha Vantage's $50/mo tier (75 req/min, no daily cap) or falls
-  back to finnhub.io for the overflow. We do not pay for Alpha
-  Vantage; the API key is the user's.
-- **ToS posture:** automated client-side use with a registered API key
-  is the intended use case. Personal-use clients are explicitly
-  in-scope. **Automated client-side lookup is permitted.**
-- **Attribution:** required where data is displayed. Surface: Settings
-  → "Data sources" + per-position caption on the asset-detail screen,
-  same shape as the collectibles cluster.
-- **Coverage:** US (NYSE, NASDAQ, AMEX), London (LSE), Frankfurt
-  (Xetra), Toronto (TSX), Hong Kong (HKEX), Tokyo (TSE), plus most EU
-  national exchanges via the `GLOBAL_QUOTE` and `TIME_SERIES_DAILY`
-  endpoints. Mutual funds covered via NAV symbols (the symbol is the
-  fund ticker, e.g. `VTSAX`). ETFs covered as regular tickers.
-- **Symbol resolution:** ticker + exchange suffix
-  (e.g. `SAP.DE` for SAP SE on Xetra vs. `SAP` for SAP Inc. on NYSE,
-  `BARC.LON` for Barclays on LSE). The `SYMBOL_SEARCH` endpoint
-  disambiguates user input ("SAP" → list of matches with exchange,
-  region, currency) and we cache the canonical symbol on the
-  `AssetEntity`. Same shape Yahoo Finance uses.
-- **Real-time vs. EOD:** **end-of-day** on the free tier (the
-  `TIME_SERIES_DAILY` endpoint returns yesterday's close on weekdays,
-  Friday's close on weekends). Real-time US quotes are paid-tier-only.
-  Fine for net-worth.
-- **Mutual funds:** priced once daily at NAV — exactly the cadence
-  Alpha Vantage's daily endpoint serves. No special path needed.
-- **ETFs:** intraday on the exchange, but we only use EOD.
-- **Maintenance:** continuously active, frequent doc updates through
-  2026.
+- Category: `AssetPrice`.
+- **Off by default.** A fresh install has zero broker plugins enabled.
+- One plugin per broker (`ibkr-tws-client`, `trade-republic`,
+  `comdirect`, `dkb-securities`, `flatex`, `schwab`, `fidelity`,
+  `vanguard`, `robinhood`, …). Each plugin talks the broker's own
+  protocol; there is no aggregator middleman.
+- Configure flow per plugin asks for broker-specific credentials
+  (OAuth token, API key, IBKR gateway host:port, etc.), stored
+  encrypted via the host's Keystore-wrapping helper.
+- Test connection performs one **read-only balance** call.
+- Privacy statement names the exact broker endpoint and what data
+  leaves the device.
+- License gate: MIT / Apache-2.0 / BSD-2 / BSD-3 / MPL-2.0 only (the
+  whole APK ships under one license set).
 
-### finnhub.io — **adopt as fallback / overflow**
+Universal fallbacks shared across all brokers:
 
-- **What:** Free + paid real-time stock / forex / crypto API. Sharper
-  free-tier rate limit than Alpha Vantage, narrower symbol coverage on
-  the free tier (free tier is US-stock-heavy; non-US coverage often
-  paid-gated).
-- **API:** `https://finnhub.io/api/v1/` — REST + JSON.
-- **Auth:** user-provided free API key (https://finnhub.io/register).
-- **Rate limit (2026, free tier):** **60 requests / minute.** Sources:
-  https://finnhub.io/pricing ,
-  https://dev.to/nexgendata/best-free-stock-market-apis-and-data-tools-in-2026-a-developers-honest-comparison-1926 .
-- **What 60/min means:** plenty of headroom for any realistic personal
-  portfolio. The constraint is symbol coverage on the free tier, not
-  request budget.
-- **ToS posture:** automated client-side use with a registered API key
-  is the intended use case. **Automated client-side lookup is
-  permitted.**
-- **Attribution:** required where data is displayed.
-- **Coverage (free tier):** US stocks (NYSE, NASDAQ, AMEX) — full.
-  International exchanges (LSE, Xetra, TSX, HKEX, etc.) — **paid
-  tier only** on most endpoints; the free `/quote` endpoint covers US
-  symbols and some major EU ETFs, but not the full Xetra list. Verify
-  per-holding before relying on it for a non-US position.
-- **Symbol resolution:** `/search?q=...` returns ticker + exchange +
-  type. Cache the canonical symbol on the `AssetEntity`.
-- **Real-time vs. EOD:** real-time available for US stocks on the free
-  tier. EOD also available. ledgerboy uses EOD only.
-- **Maintenance:** active.
+- **Manual entry.** Always available, no plugin needed.
+- **CSV import.** Per-broker CSV dialect plugins under the import
+  category (shape inherited from `banking-import.md`). Every broker
+  exports statements; users can map columns + import.
 
-### Polygon.io — **defer**, paid-tier dominant
+## Rejected SaaS-aggregator sources (documented so future agents don't re-grep)
 
-- **API:** `https://api.polygon.io/` .
-- **Free tier (2026):** 5 req/min, **15-minute-delayed data**, 2 years
-  of daily history. Sources: https://polygon.io/pricing ,
-  https://tradingtoolshub.com/review/polygon-io/ .
-- **License gate (effectively):** the free tier's 5 req/min cap and
-  15-min delay are workable for net-worth, but Polygon's real strength
-  is real-time + tick data which is paid-only. For ledgerboy's
-  net-worth-only use case Alpha Vantage's free tier strictly dominates
-  on symbol coverage; Polygon's free tier is US-only. **Not a v1
-  default.** Documented as an alternative if Alpha Vantage's 25/day
-  cap becomes binding and the user wants a free-tier fallback.
+The previous round of research picked Alpha Vantage and finnhub.io as
+v1 connectors. **Both are rejected** under the new "no paid-SaaS
+pricing intermediaries" lock from [`connector-plugins.md`](connector-plugins.md).
+The technical analysis is preserved here so the rejection is on the
+record:
 
-### IEX Cloud — **rejected, shut down**
+| Source | URL | Why rejected |
+| --- | --- | --- |
+| **Alpha Vantage** | <https://www.alphavantage.co/> | Third-party pricing aggregator, not source-of-truth. Free tier (25 req/day, 5 req/min per <https://www.alphavantage.co/premium/>) plus paid tiers. User would have to register and trust a US analytics company with their portfolio symbol list. **OUT** — violates "direct-to-source-of-truth only." |
+| **finnhub.io** | <https://finnhub.io/> | Third-party pricing aggregator. Free tier (60 req/min per <https://finnhub.io/pricing>). Same shape as Alpha Vantage. **OUT.** |
+| **Polygon.io** | <https://polygon.io/> | Third-party pricing aggregator. Free tier 5 req/min, 15-min-delayed per <https://polygon.io/pricing>. **OUT.** |
+| **Twelve Data** | <https://twelvedata.com/> | Third-party pricing aggregator. Free tier 800 credits/day per <https://twelvedata.com/pricing>. **OUT.** |
+| **Marketstack** | <https://marketstack.com/> | Third-party pricing aggregator. **OUT.** |
+| **IEX Cloud** | (shut down 2024) | Dead per <https://www.alphavantage.co/iexcloud_shutdown_analysis_and_migration/>. Was an aggregator anyway. **OUT.** |
+| **Yahoo Finance unofficial** (yfinance / yahoo_fin) | <https://finance.yahoo.com/> | Unofficial scraping; Yahoo ToS forbids automated extraction. **OUT** on ToS gate. |
+| **Google Finance** | <https://www.google.com/finance> | No public API. **OUT.** |
+| **ECB equity data** | <https://www.ecb.europa.eu/> | Publishes aggregate indices only, not per-security quotes. Not a fit. |
 
-- IEX Cloud shut down in **August 2024**. The Alpha Vantage migration
-  guide (https://www.alphavantage.co/iexcloud_shutdown_analysis_and_migration/)
-  documents this. **Not an option in 2026.**
+The lock is firm: **no third-party pricing aggregator ships as a
+ledgerboy plugin, free or paid.** If a price isn't available from the
+user's own broker, from a broker CSV, or from manual entry, it isn't
+available. That's the trade-off the architecture makes for
+"direct-to-source-of-truth only."
 
-### Yahoo Finance (unofficial) — **rejected**, ToS-disqualified
+## Per-broker plugin candidates
 
-- The yfinance / yahoo_fin libraries scrape Yahoo's frontend. Yahoo's
-  ToS forbids automated extraction; the endpoint shape breaks
-  periodically when Yahoo redesigns the frontend.
-- **ToS gate fails.** Documented; **not used.**
+### Openness gradient
 
-### Frankfurter — **not a securities source**
+A spectrum runs from "official, documented, ToS-clean broker API" at
+one end to "no API exists, CSV import only" at the other. Per-broker
+plugins are sorted on this gradient; v1 ships one or two reference
+plugins from the official-API end, and additional brokers are small
+Phase B sub-phases.
 
-- Free ECB-backed FX API (`https://api.frankfurter.app/`). FX-only.
-  Lives in the banking / FX cluster, not this one. Mentioned here only
-  because the seed listed it; not in scope for this file.
+| Tier | Examples | Plugin posture |
+| --- | --- | --- |
+| **Official open API, ToS-clean** | IBKR, Comdirect, Schwab (US, post-Schwab/TDA merger), Fidelity (limited) | Ship a plugin. Configure asks for OAuth or API key. |
+| **Unofficial reverse-engineered API, ToS-grey** | Trade Republic, Robinhood | Ship a plugin **with a ToS-risk privacy statement.** The user accepts the risk; the plugin can break at any time. |
+| **No API at all** | Most German Sparkassen/Volksbanken securities accounts, smaller brokers | **CSV import only.** No automated plugin. |
 
-### ECB equity data — **rejected, sparse**
+### Interactive Brokers (IBKR) — **adopt as v1 reference plugin (official API tier)**
 
-- ECB publishes aggregate equity indices, not per-security quotes.
-  Not useful for ledgerboy.
+- **Plugin id:** `ibkr-tws-client`.
+- **What:** IBKR publishes the TWS API (historically also known as the
+  IB Gateway API). Open protocol, widely documented. The protocol is a
+  socket-based wire format spoken by TWS (the desktop trading app) or
+  IB Gateway (a smaller headless version of the same).
+- **API:** TWS socket protocol. Docs:
+  <https://interactivebrokers.github.io/tws-api/> .
+- **Topology:** the user runs TWS or IB Gateway on their desktop (or
+  on a server they control); the ledgerboy plugin connects over the
+  LAN to that gateway's socket. **ledgerboy does not talk to IBKR
+  servers directly** — it talks to the user's own TWS/Gateway, which
+  in turn talks to IBKR. This matches the user's posture: the user
+  already trusts their own machine.
+- **Client library:** IBKR ships an official `TwsApi.jar` from
+  <https://www.interactivebrokers.com/en/trading/ib-api.php>. **License
+  needs verification** before adoption (license file in the SDK zip);
+  if not MIT / Apache-2.0 / BSD / MPL-2.0, the plugin must use either
+  an alternative permissively-licensed open client (research
+  candidates: <https://github.com/Finvasia/finvasia-api> shape clones,
+  community Kotlin/JVM clients) or implement the socket wire format
+  from scratch. The TWS wire format is documented; a minimal
+  read-only-balances client is on the order of 1,000–2,000 LOC.
+- **Configure flow:** the user enters gateway host (default
+  `127.0.0.1` for local LAN), gateway port (default `7497` for TWS
+  live or `4002` for IB Gateway live), client ID (any non-zero
+  integer, must be unique per concurrent connection), and an optional
+  read-only-API-only toggle (TWS exposes this; the plugin defaults it
+  on so the plugin can never place an order). Credentials are not
+  stored on-device because TWS itself holds the IBKR login.
+- **Test connection:** the plugin connects to `host:port`, requests
+  the account summary, and confirms a single read-only balance.
+- **Privacy statement:** "Connects over your LAN to your own TWS or
+  IB Gateway instance. No data leaves your network except the calls
+  TWS itself makes to Interactive Brokers (which TWS does anyway when
+  you use it). The plugin reads positions and balances only;
+  read-only API mode is enforced."
+- **ToS posture:** IBKR explicitly supports the TWS API for personal
+  use. **Clean.**
+- **Coverage:** every market IBKR routes to — US, EU (Xetra, LSE,
+  Euronext), Asia (HKEX, TSE, SGX), etc.
+- **Symbol resolution:** IBKR contracts use `(symbol, exchange,
+  currency, secType)` — the plugin maps this to ledgerboy's
+  `CanonicalSymbol`.
 
-### Twelve Data — **document, defer**
+### Trade Republic — **adopt as v1.x plugin (unofficial-API tier)**
 
-- **API:** `https://api.twelvedata.com/` .
-- **Free tier (2026):** 800 credits/day on the Basic plan, 8 requests
-  per minute. Source: https://twelvedata.com/pricing .
-- **Coverage:** stocks (US + most international exchanges), forex,
-  crypto, ETFs.
-- **Fit:** plausible second-fallback if both Alpha Vantage *and*
-  finnhub.io become unworkable. Documented as a known alternative;
-  not a v1 connector. The 800/day credit budget covers ~50 holdings
-  per day with the `/price` endpoint (1 credit each), so it would also
-  be a viable Alpha-Vantage replacement for users with portfolios in
-  the 25–50 range.
+- **Plugin id:** `trade-republic`.
+- **What:** German neobroker, mobile-first, no official public API.
+- **API:** **unofficial reverse-engineered.** Reference Python client:
+  `Zarathustra2/TradeRepublicApi`
+  (<https://github.com/Zarathustra2/TradeRepublicApi>, MIT). The
+  ledgerboy plugin reimplements the protocol in Kotlin (license-gate
+  compliance + native networking).
+- **ToS posture:** **grey.** Trade Republic's terms do not explicitly
+  permit automated personal-use clients; they also do not explicitly
+  forbid them. TR can break the unofficial API at any time and has
+  historically tweaked it (rotated WebSocket message shapes,
+  token-refresh schemes). The plugin's privacy statement must say so
+  explicitly: "This plugin uses an unofficial API that Trade Republic
+  has not publicly committed to. It may break without warning, and
+  Trade Republic's terms of service may not permit automated access."
+- **Configure flow:** the user enters their TR phone number + PIN +
+  device-pairing flow (TR's mobile login uses a 4-digit PIN and a
+  device-token bound to a one-time SMS challenge). The plugin stores
+  the device token encrypted via the host's Keystore-wrapping helper.
+- **Test connection:** reads the portfolio summary; confirms a single
+  balance.
+- **Coverage:** TR's full instrument universe (DE/EU stocks, ETFs,
+  some US, crypto via TR's own wrapper).
+- **Risk note:** documented in the plugin's privacy statement; surface
+  to the user on enable.
 
-### Marketstack — **document, defer**
+### Comdirect — **adopt as v1.x plugin (official-API tier)**
 
-- `https://marketstack.com/` — free tier, 70+ global exchanges. Free
-  tier limits are tight (100 req/month historically). Documented;
-  defer.
+- **Plugin id:** `comdirect`.
+- **What:** German traditional bank + online broker (Commerzbank
+  subsidiary).
+- **API:** official REST API at `https://api.comdirect.de/api/` with
+  OAuth 2.0. Docs:
+  <https://developer.comdirect.de/> .
+- **ToS posture:** clean. The API is published for personal-use
+  clients; the OAuth flow is the user authorizing their own client.
+- **Configure flow:** OAuth 2.0 authorization-code flow via system
+  browser (Custom Tabs); the plugin stores the refresh token
+  encrypted.
+- **Test connection:** reads the depot summary; confirms one balance
+  via the `/brokerage/v3/depots/{depotId}/positions` endpoint.
+- **Coverage:** the user's Comdirect depot positions.
 
-### Direct from exchange APIs — **out of scope**
+### DKB (Deutsche Kreditbank) — **investigate, defer**
 
-- Xetra, LSE, NYSE publish data via paid SIP / proprietary feeds. Not
-  appropriate for a personal-use app.
+- **Plugin id:** `dkb-securities` (planned).
+- **What:** German direct bank with brokerage arm.
+- **API status:** DKB's PSD2 API covers payment accounts (handled by
+  the `dkb-psd2` banking plugin) but **does not cover securities
+  depot positions**. DKB has no public securities API. Reverse-
+  engineered clients exist for the customer-portal but they are
+  ToS-hostile and break frequently.
+- **Recommendation:** **CSV import only** for v1. Document an
+  unofficial-API plugin candidate for later research; do not ship.
 
-## Lookup shape
+### Flatex — **investigate, defer**
+
+- **Plugin id:** `flatex` (planned).
+- **What:** German discount broker.
+- **API status:** no public personal-use API. Some community
+  reverse-engineering exists; ToS-grey.
+- **Recommendation:** **CSV import only** for v1.
+
+### Robinhood — **adopt as later plugin (unofficial-API tier)**
+
+- **Plugin id:** `robinhood` (planned, US users).
+- **What:** US neobroker.
+- **API status:** **unofficial reverse-engineered.** Reference Python
+  client: `robin-stocks` (<https://github.com/jmfernandes/robin_stocks>,
+  MIT). Robinhood's ToS does not explicitly authorise automated
+  personal clients; same grey-zone risk note as Trade Republic.
+- **Recommendation:** ship as a Phase B+ plugin with the ToS-risk
+  privacy statement. Not v1.
+
+### Charles Schwab — **investigate (post-TDA merger), defer**
+
+- **Plugin id:** `schwab` (planned).
+- **What:** US broker; absorbed TD Ameritrade in 2023. Schwab's
+  individual-developer trading API
+  (<https://developer.schwab.com/>) is the successor to TDA's API
+  with a partner-approval flow. Personal-use availability requires
+  developer registration.
+- **License posture:** Schwab provides REST + OAuth; client code is
+  the plugin author's responsibility (no library license issue).
+- **Recommendation:** ship as a Phase B+ plugin once the developer-
+  registration ergonomics are understood. Not v1.
+
+### Fidelity — **investigate, defer**
+
+- **Plugin id:** `fidelity` (planned).
+- **API status:** Fidelity does not publish a general personal-use
+  trading API. Workplace-retirement and institutional APIs exist;
+  personal brokerage uses the web/app only. **CSV import only** for
+  v1.
+
+### Vanguard — **CSV import only**
+
+- **API status:** no public personal-use API. **CSV import only.**
+
+### Other brokers — **CSV import only**
+
+Every other broker not enumerated above (DEGIRO, eToro, Saxo,
+ING-DiBa brokerage, etc.) ships as **CSV import only** for v1.
+Per-broker plugins are small Phase B sub-phases that can land later if
+the broker has an official API; brokers with no API are permanently
+CSV-only.
+
+## Manual + CSV import — universal fallbacks
+
+### Manual entry
 
 The user enters:
 
 1. **Symbol** (e.g. `SAP`, `VTSAX`, `IWDA`)
 2. **Exchange** (sealed enum: `XETRA`, `NASDAQ`, `NYSE`, `LSE`, `TSX`,
    `HKEX`, `TSE`, plus an `OTHER` with a free-text MIC code)
-3. **Quote currency** (autodetected from the resolved upstream symbol;
-   user can override if mis-resolved)
-4. **Quantity** (Decimal-as-Long minor units — half-shares from
-   fractional brokers are real)
-5. **Cost basis** (optional Money, for return-tracking)
+3. **Quote currency**
+4. **Quantity** (Decimal-as-Long minor units — fractional brokers are
+   real)
+5. **Cost basis** (optional Money)
+6. **Current price** (manual entry — the user types whatever they
+   read off their broker statement)
 
-ledgerboy calls `SYMBOL_SEARCH` (or the source's equivalent) at
-add-time to confirm the (symbol, exchange) pair resolves to exactly
-one upstream security. Cached canonical symbol lives on the
-`AssetEntity`. The (symbol, exchange) combination is necessary because
-the seed's example holds: `SAP.DE` (SAP SE, Xetra) ≠ `SAP`
-(SAP Inc., NYSE).
+Each manual revaluation writes one `ValuationEvent(source="manual")`.
+This is always available with **zero plugins enabled.**
 
-Lookup is **deterministic**: same (symbol, exchange) always resolves to
-the same security.
+### CSV import (per-broker dialect plugins)
+
+Every broker exports statements as CSV (or XLSX). The CSV import
+plugins live under the `Import` plugin category from
+[`connector-plugins.md`](connector-plugins.md), one plugin per broker
+dialect:
+
+- `ibkr-csv` — IBKR Activity Statement CSV.
+- `trade-republic-csv` — TR's "Steuerübersicht" + transaction CSV.
+- `comdirect-csv` — Comdirect "Umsätze" CSV (the same CSV the banking
+  side already parses for transactions).
+- `dkb-csv-securities` — DKB depot CSV export.
+- `flatex-csv` — Flatex statement CSV.
+- `schwab-csv`, `fidelity-csv`, `vanguard-csv` — US-broker CSVs.
+- `degiro-csv`, `etoro-csv`, `saxo-csv` — pan-EU broker CSVs.
+
+Each plugin is **disabled by default**. Configure flow is a one-time
+column-mapping step (the plugin proposes a mapping based on header
+detection; the user confirms). Import runs through the SAF picker.
+Each imported row writes a `ValuationEvent(source="csv:<broker>")`.
+
+The CSV import pattern shares scaffolding with
+[`banking-import.md`](banking-import.md) — same parser harness, same
+SAF picker hook, same encrypted-at-rest staging.
+
+## Lookup shape
+
+When a per-broker plugin is `Active`, the user enters or imports
+positions and the plugin populates them; no symbol search needed (the
+broker already knows the canonical symbol).
+
+When using manual entry without a broker plugin, the user supplies
+(symbol, exchange, quote currency) directly. **No `SYMBOL_SEARCH`
+endpoint call is made — there is no third-party symbol-search service
+in v1**, because every such service (Alpha Vantage, finnhub.io,
+Yahoo Finance) violates the no-aggregator lock. The user disambiguates
+by typing the exchange suffix themselves (e.g. `SAP.DE` for Xetra vs.
+`SAP` for NYSE).
+
+Lookup is **deterministic**: (symbol, exchange) always identifies one
+security. The `AssetEntity` row stores the canonical tuple.
 
 ## Revaluation cadence
 
 - **Automatic refresh:** once per day, on app open, if the cached
-  `latestValuationEvent.date` is older than 1 day.
-- **TTL:** 1 day (end-of-day pricing — refreshing more often gains
-  nothing on the free tier and burns request budget).
-- **Manual refresh:** "refresh prices" on the Assets screen forces a
-  fetch.
-- **Bulk refresh:** Alpha Vantage's 5/min cap means a 25-holding
-  portfolio refresh takes ~5 minutes; a `WorkManager` job runs it in
-  the background with spacing. finnhub.io's 60/min cap means a
-  100-holding portfolio refreshes in ~2 minutes.
-- **Weekend / holiday awareness:** the EOD price doesn't change on
-  weekends or exchange holidays. The connector consults a small per-
-  exchange holiday calendar; on a known-closed day, it skips the fetch
-  and keeps the most recent `ValuationEvent`. Phase J.x sub-step.
+  `latestValuationEvent.date` is older than 1 day, **and a broker
+  plugin is `Active` for that holding's source broker.** The
+  `PluginScheduler` from Phase X runs this; per-plugin background-sync
+  opt-in is respected.
+- **Manual refresh:** "Refresh prices" on the Assets screen forces a
+  fetch for any holding whose source plugin is `Active`.
+- **No automatic refresh for holdings with no Active plugin.** They
+  stay at the last manually-entered value until the user types a new
+  one or imports an updated CSV.
+- **Weekend / holiday awareness:** the broker plugin already respects
+  the broker's own price-update schedule; a per-exchange holiday
+  calendar (small static data) helps avoid useless fetches but is not
+  load-bearing because brokers simply return stale prices on closed
+  days.
 
 ## Fit recommendation
 
-- **Alpha Vantage:** **automated connector, v1 default.** User-provided
-  API key. Fits up to ~25 positions on the free tier.
-- **finnhub.io:** **automated connector, v1 fallback / overflow.** For
-  US-heavy portfolios and for portfolios > 25 positions on the free
-  tier. User-provided API key.
-- **Twelve Data:** documented alternative, not v1.
-- **Polygon.io:** documented alternative, not v1.
-- **IEX Cloud:** dead, do not use.
-- **Yahoo Finance unofficial:** ToS-disqualified.
-- **Frankfurter / ECB:** wrong cluster.
-
-The user picks the source per holding (or accepts the per-source
-default: Alpha Vantage primary, finnhub.io if Alpha Vantage
-doesn't cover the symbol). The choice lives on the `AssetEntity` row,
-not as a global setting — different holdings can use different sources
-and the `ValuationEvent.source` field already accommodates this.
+- **v1 reference plugin (official API tier):** `ibkr-tws-client`.
+  Disabled by default. Configure asks for gateway host:port + client
+  ID + read-only-only toggle.
+- **v1 plugin (official API tier):** `comdirect`. Disabled by default.
+  Configure runs the OAuth flow.
+- **v1.x plugin (unofficial API tier):** `trade-republic`. Disabled by
+  default. Privacy statement names the ToS-grey risk.
+- **Universal v1 fallback:** **manual entry** (no plugin needed).
+- **Universal v1 fallback:** **CSV import** via per-broker dialect
+  plugins, disabled by default.
+- **Phase B+ plugins:** `dkb-securities`, `flatex`, `robinhood`,
+  `schwab`, `fidelity`, `vanguard`, additional EU brokers — each
+  small. Built on the Phase X host runtime; no host changes needed.
+- **Rejected (documented above):** Alpha Vantage, finnhub.io, Polygon,
+  Twelve Data, Marketstack, IEX Cloud, Yahoo unofficial, Google
+  Finance. No third-party pricing aggregator ships, ever.
 
 ## Cross-cutting
 
-### `SecuritySource` interface
+### Plugin-internal `SecuritySource` shape
+
+Each per-broker plugin implements `ConnectorPlugin` (the host-visible
+surface from [`connector-plugins.md`](connector-plugins.md)) and
+internally exposes a narrower `SecuritySource` for its own balance /
+price reads. The host only sees `ConnectorPlugin`.
 
 ```kotlin
+// Internal to each per-broker plugin.
 interface SecuritySource {
-    val id: String                  // "alphavantage", "finnhub"
+    val id: String                  // "ibkr", "comdirect", "trade-republic"
     val attribution: AttributionLine
-    val rateLimit: RateLimitPolicy
     val ttl: Duration               // 1.days
 
-    suspend fun search(query: String): Result<List<SecurityMatch>>
-    suspend fun fetchPrice(symbol: CanonicalSymbol): Result<Money>
+    suspend fun readBalances(): Result<List<BrokerPosition>>
+    suspend fun readPrice(symbol: CanonicalSymbol): Result<Money>
 }
 
 data class CanonicalSymbol(val symbol: String, val exchange: Exchange, val currency: Currency)
+data class BrokerPosition(val symbol: CanonicalSymbol, val quantity: Quantity, val unitPrice: Money?)
 ```
 
-Each impl in `com.eight87.ledgerboy.asset.securities.<source>`. Per
-the SOLID Open/Closed rule, adding finnhub.io after Alpha Vantage =
-new impl + new registry entry, not an `if (source == ...)` chain.
+Each plugin lives in `com.eight87.ledgerboy.plugins.<plugin-id>/`.
+Adding a fourth broker = new plugin module + new manifest entry; the
+host code does not change (SOLID Open/Closed).
 
 ### Caching
 
-Same shape as collectibles: every `fetchPrice` result writes one
-`ValuationEvent` row. Append-only; no eviction. The
-`SecurityMatch` results from `search` are cached for 30 days (symbol
-disambiguation rarely changes).
+Every `readBalances` / `readPrice` result writes one or more
+`ValuationEvent` rows. Append-only; no eviction.
 
 ### Rate-limit discipline
 
-| Source        | Spacing | Burst | Notes                                       |
-| ------------- | ------- | ----- | ------------------------------------------- |
-| Alpha Vantage | 12 s    | 5     | 5/min ≈ 12 s spacing; daily cap 25 req      |
-| finnhub.io    | 1 s     | 60    | 60/min; spacing matters less                |
-| Twelve Data   | 8 s     | 8     | 8/min on free tier                          |
-| Polygon.io    | 12 s    | 5     | 5/min on free tier                          |
-
-The shared `RateLimitedClient` (defined in the collectibles file;
-reused here verbatim) enforces these via an `OkHttpClient`
-`Interceptor`. Alpha Vantage's 25/day cap is enforced as a separate
-daily-budget counter persisted to DataStore — when the budget is
-exhausted, scheduled refreshes pause until midnight UTC and the UI
-shows a non-blocking "Daily price-fetch budget reached" badge.
+Each broker plugin owns its own rate-limit policy (broker APIs differ
+wildly — IBKR uses pacing violation responses, Comdirect uses
+per-minute quotas, Trade Republic uses WebSocket back-pressure).
+Spacing lives inside each plugin; the host's `PluginNetworkGuard`
+tracks bytes-in/out / fetch count / error count uniformly via the
+Phase X interceptor.
 
 ### Attribution surface
 
-- **Settings → Data sources** lists Alpha Vantage and (if active)
-  finnhub.io with one-line credit + link, same screen as the
-  collectibles sources.
-- **Asset-detail screen** shows "via Alpha Vantage" / "via finnhub.io"
-  next to the latest-price line.
-- Strings live in `strings.xml` per the i18n discipline.
+Per-plugin attribution rides on the **Settings → Plugins → Asset
+prices** card from Phase X.6. Each card shows the broker's display
+name, license SPDX (the plugin's own code license; the broker is
+attributed in the privacy-statement line), state chip, last fetch
+timestamp + bytes summary.
 
-### API-key storage
+Strings live in `strings.xml` under the `plugin_<id>_attribution` /
+`plugin_<id>_privacy_statement` naming convention, matching the
+per-plugin string layout used by the banking and FX plugins.
 
-The user-provided API keys are stored encrypted (Android Keystore
-wrap, per [`security-research.md`](security-research.md)). Settings →
-Data sources → Alpha Vantage shows a "Set API key" entry. Empty key
-disables the source — the connector throws `NoApiKeyException` which
-the UI translates to "Add an Alpha Vantage API key in Settings to
-enable automatic price refresh".
+### Credential storage
 
-### Money shape
+Per-broker plugin credentials (OAuth refresh tokens, API keys, TR
+device tokens) are stored encrypted via the host's Keystore-wrapping
+helper, per [`security-research.md`](security-research.md). Each
+plugin owns a private DataStore namespace from Phase X.3.
 
-Quoted prices arrive as JSON numbers (e.g. `"165.42"` from Alpha
-Vantage `GLOBAL_QUOTE`). The connector parses to `Money(long,
-currency)` at the boundary, minor-units precision (currency-aware —
-JPY has zero decimals, KWD has three). Quantity is stored as long
-with 6-decimal precision (`1234567` = `1.234567` shares) to handle
-fractional shares from brokers like Trade Republic; this is *not* a
-Money — it's a `Quantity` value class. Position value =
-`unitPrice × quantity / 10^6`, computed via integer math, never
-floating point.
+### Money + Quantity shape
+
+Quoted prices arrive as broker-API JSON / wire-protocol numbers. The
+plugin parses to `Money(long, currency)` at the boundary, minor-units
+precision (currency-aware — JPY has zero decimals, KWD has three).
+Quantity is stored as a `Quantity` value class (8-decimal long) to
+handle fractional shares from brokers like Trade Republic; this is
+*not* a Money — it's a `Quantity`. Position value =
+`unitPrice × quantity / 10^8`, integer math, never floating point.
 
 ## Decision
 
-- **v1 automated connector:** **Alpha Vantage** with user-provided
-  API key. Symbol resolution via `SYMBOL_SEARCH`, EOD pricing via
-  `TIME_SERIES_DAILY` or `GLOBAL_QUOTE`. 25 req/day free-tier cap
-  fits ~25 positions; surfaced honestly to the user.
-- **v1 fallback:** **finnhub.io** with user-provided API key for
-  portfolios that exceed Alpha Vantage's daily cap or that hold
-  symbols Alpha Vantage doesn't cover. US-symbol-strong, international
-  coverage weaker on the free tier.
-- **No paid integrations in v1.** IEX Cloud is dead. Polygon.io,
-  Twelve Data, Marketstack documented for future.
-- **No scraped Yahoo Finance.** ToS-disqualified.
+- **v1 plugins (built on Phase X):** `ibkr-tws-client` (reference,
+  official-API tier) and `comdirect` (official-API tier). Both
+  disabled by default; user enables and configures per source.
+- **v1.x plugins:** `trade-republic` (unofficial-API tier, ToS-grey
+  risk surfaced).
+- **Universal v1 fallbacks (no plugins required):** manual entry and
+  per-broker CSV import (CSV plugins disabled by default; user enables
+  the formats their broker exports).
+- **No third-party pricing aggregator** — Alpha Vantage, finnhub.io,
+  Polygon, Twelve Data, Marketstack, Yahoo unofficial all rejected
+  (see table above).
+- **CSV-only brokers (no automated plugin):** DKB securities, Flatex,
+  Vanguard, Fidelity, DEGIRO, eToro, Saxo, ING-DiBa, every other
+  broker without an official personal-use API.
 
-### `ValuationEvent` write path
+### `ValuationEvent` write path (per-broker plugin)
 
 ```
-WorkManager daily-refresh job runs (or user taps "Refresh prices"):
-  for each holding:
-    source = holding.preferredSource ?? defaultSource(holding.exchange)
-    if budgetRemaining(source) == 0:
-      skip; surface "daily budget reached" badge
-    if not exchangeOpenSinceLastFetch(holding.exchange, latestValuationEvent.date):
-      skip; weekend / holiday
-    price = source.fetchPrice(holding.canonicalSymbol)
+PluginScheduler tick (or user taps "Refresh prices"):
+  for each Active securities plugin:
+    if plugin.state != Active: skip
+    positions = plugin.readBalances()
     if success:
-      insert ValuationEvent(date = now(), value = price * quantity,
-                            source = source.id)
+      for each position:
+        insert ValuationEvent(date = now(),
+                              value = position.unitPrice * position.quantity / 10^8,
+                              source = "plugin:${plugin.id}")
     else:
-      surface "stale price" badge, keep latest row
+      surface non-blocking "stale price" badge on holdings from this plugin
   done
+```
+
+### `ValuationEvent` write path (CSV import)
+
+```
+user invokes "Import broker statement" via SAF picker:
+  pick a CSV-import plugin (must be Active)
+  parse rows, write per-position ValuationEvent(source = "csv:${plugin.id}")
+```
+
+### `ValuationEvent` write path (manual)
+
+```
+user taps "Update price" on a holding:
+  type new price → insert ValuationEvent(source = "manual")
 ```
 
 ### Phase J implementation sub-steps
 
-- [ ] **J.11** Define the `SecuritySource` interface, `CanonicalSymbol`,
-  `Exchange` sealed enum, `Quantity` value class. JVM unit tests for
-  fractional-share quantity math + the daily-budget counter logic.
-- [ ] **J.12** Implement `AlphaVantageSource` against
-  `https://www.alphavantage.co/query` with the 12 s spacing
-  + 25/day daily budget. `SYMBOL_SEARCH` for resolution,
-  `GLOBAL_QUOTE` for EOD pricing (cheaper than `TIME_SERIES_DAILY` for
-  a single-day fetch). Fixture-based JSON parser test against
-  fictional symbols.
-- [ ] **J.13** Wire `AlphaVantageSource` into the `AssetEntity` model:
-  new asset class enum value `SECURITY`, new fields for `symbol`,
-  `exchange`, `quote_currency`, `quantity`, `cost_basis_money`. Room
-  additive migration.
-- [ ] **J.14** Settings → Data sources → Alpha Vantage entry: API key
-  input (encrypted via the security cluster's keystore wrapping),
-  "test connection" button, attribution copy from strings.xml. Lands
-  in J.14 with Alpha Vantage only.
+These all build on the **Phase X host runtime** from
+[`connector-plugins.md`](connector-plugins.md). Phase X lands the
+`ConnectorPlugin` interface, the manifest, the `PluginNetworkGuard`,
+the `PluginScheduler`, the Settings → Plugins screen, the per-plugin
+Configure shell. Each sub-step below implements one plugin or one
+piece of the manual / CSV scaffolding on top.
+
+- [ ] **J.11** Define the internal `SecuritySource` interface,
+  `CanonicalSymbol`, `Exchange` sealed enum, `Quantity` value class,
+  `BrokerPosition` data class. All inside the plugins shared package.
+  JVM unit tests for fractional-share `Quantity` math.
+- [ ] **J.12** Wire securities into the `AssetEntity` model: new
+  asset class enum value `SECURITY`, new fields for `symbol`,
+  `exchange`, `quote_currency`, `quantity`, `cost_basis_money`,
+  `source_broker_plugin_id_nullable`. Room additive migration.
+- [ ] **J.13** Implement the **`ibkr-tws-client` plugin** (v1
+  reference). Plugin id `ibkr-tws-client`, category `AssetPrice`,
+  license `MIT` (our own client code; `TwsApi.jar` license verified
+  before adoption — if non-permissive, ship a roll-our-own minimal
+  socket client instead). `ConfigScreen()` asks for gateway host
+  (default `127.0.0.1`), port (default `7497`), client ID, read-only
+  toggle. Test connection opens the socket, requests account summary,
+  reports success. `fetch()` reads balances + last prices.
+  **Disabled by default**; registers in `PluginManifest.all`.
+- [ ] **J.14** Implement the **`comdirect` plugin**. Plugin id
+  `comdirect`, category `AssetPrice`, license `MIT`. `ConfigScreen()`
+  runs the OAuth 2.0 authorization-code flow against
+  `https://api.comdirect.de/` via system browser (Custom Tabs);
+  stores the refresh token encrypted. Test connection reads the depot
+  summary. `fetch()` reads positions via
+  `/brokerage/v3/depots/{depotId}/positions`. **Disabled by default.**
 - [ ] **J.15** UI: Assets screen "Add security" entry. Form asks for
-  symbol + exchange + quantity + cost basis. On save, `SYMBOL_SEARCH`
-  confirms the resolution; the user picks the right match from the
-  list if multiple; first `ValuationEvent` written immediately.
-- [ ] **J.16** Per-exchange holiday calendar (small static data: NYSE,
-  Xetra, LSE, TSX, HKEX, TSE). `WorkManager` skips fetches on closed
-  days. Static data committed in `app/src/main/assets/holidays/`.
-- [ ] **J.17** Implement `FinnhubSource` against
-  `https://finnhub.io/api/v1/quote`. Adds the second source; the
-  source-picker UI on the per-holding settings now offers a choice.
-- [ ] **J.18** Daily-budget UI: a "Today's price-fetch usage: 18 / 25"
-  line in Settings → Data sources → Alpha Vantage. Resets at the
-  source's local-time midnight (UTC for Alpha Vantage).
-- [ ] **J.19** Bulk-refresh `WorkManager` job: runs once daily at a
-  user-configurable time (default: 23:00 local), iterates holdings,
-  respects spacing + budgets. Persisted across reboots via
-  `setPeriodicWork`.
-- [ ] **J.20** Mutual-fund quirks: mutual funds price once daily at
-  market close; document that the price the user sees the morning
-  after is yesterday's NAV. No code change — just a one-line caption
-  on mutual-fund holdings ("priced daily at fund close").
+  symbol + exchange + quantity + cost basis + (optional) source-broker
+  plugin to associate the holding with. If a broker plugin is `Active`
+  for this holding, prices refresh from the plugin; otherwise the
+  holding is manual.
+- [ ] **J.16** Manual-revaluation flow for securities: same shape as
+  the manual-class wizard from `asset-realestate.md` / `asset-vehicles.md`.
+  "Update price" writes a `ValuationEvent(source="manual")`.
+- [ ] **J.17** Implement the **`trade-republic` plugin** (v1.x,
+  unofficial-API tier). Plugin id `trade-republic`, category
+  `AssetPrice`, license `MIT` (reimplemented in Kotlin from the
+  `Zarathustra2/TradeRepublicApi` MIT reference). `ConfigScreen()`
+  runs the phone-number + PIN + SMS-device-pairing flow; stores the
+  device token encrypted. **Privacy statement explicitly names the
+  ToS-grey risk** ("This plugin uses an unofficial API that Trade
+  Republic may break without warning"). **Disabled by default.**
+- [ ] **J.18** Per-exchange holiday calendar (small static data: NYSE,
+  Xetra, LSE, TSX, HKEX, TSE). The `PluginScheduler` skips fetches on
+  closed days. Static data in `app/src/main/assets/holidays/`.
+- [ ] **J.19** CSV-import plugins for the four v1 brokers:
+  `ibkr-csv`, `comdirect-csv`, `trade-republic-csv`, plus one
+  reference US broker CSV (`schwab-csv` or `fidelity-csv`). Each
+  plugin is in category `Import`, disabled by default, with a
+  one-time column-mapping Configure flow. Shares the parser harness
+  from `banking-import.md`.
+- [ ] **J.20** Phase B+ plugin stubs (file-only, no impl): document
+  `dkb-securities` (CSV-only for v1, automated plugin gated on DKB
+  publishing a securities API), `flatex` (CSV-only), `robinhood`
+  (unofficial-API, US users), `schwab` (developer-registration-gated),
+  `fidelity` (CSV-only), `vanguard` (CSV-only). Each gets one
+  paragraph in a new `docs/plans/asset-securities-brokers.md` index
+  file noting current API status + reason for v1 deferral.
+
+### References
+
+- Plugin architecture authority: [`connector-plugins.md`](connector-plugins.md)
+- IBKR TWS API: <https://interactivebrokers.github.io/tws-api/>
+- IBKR API hub: <https://www.interactivebrokers.com/en/trading/ib-api.php>
+- Trade Republic unofficial client (reference, MIT): <https://github.com/Zarathustra2/TradeRepublicApi>
+- Comdirect developer portal: <https://developer.comdirect.de/>
+- Schwab developer portal: <https://developer.schwab.com/>
+- Robinhood unofficial client (reference, MIT): <https://github.com/jmfernandes/robin_stocks>
+- Rejected SaaS sources (for the record): <https://www.alphavantage.co/>, <https://finnhub.io/>, <https://polygon.io/>, <https://twelvedata.com/>, <https://marketstack.com/>
+- IEX Cloud shutdown notice: <https://www.alphavantage.co/iexcloud_shutdown_analysis_and_migration/>
