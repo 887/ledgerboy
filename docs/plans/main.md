@@ -1,8 +1,8 @@
 # ledgerboy — main build plan
 
-## Status: 🟢 BUILDING — Phases 0 / A / X / C / B / D shipped; Phase E (accounts) next
+## Status: 🟢 BUILDING — Phases 0 / A / X / C / B / D / E shipped; Phase F (transactions) next
 
-_Shipped + verified on 2026-06-14 (39 unit tests green): Phase 0 (host), Phase A (scaffold + UI shell), Phase X (connector plugin runtime), Phase C (ledger schema + Money + transaction store), Phase B (CSV import connector), Phase D (multi-currency FX cache + MoneyConverter + ECB-direct FX plugin). The data + connector + FX foundations are in place; next are the screen phases E (accounts) / F (transactions) / Overview to surface the ledger, then G (categories) onward. UI-screen phases need live AVD verification — currently the shared `medium_phone` AVD is being driven by another session, so those land when it frees._
+_Shipped + verified on 2026-06-14 (42 unit tests green): Phase 0 (host), A (scaffold + UI shell), X (connector plugin runtime), C (ledger schema + Money + transaction store), B (CSV import connector), D (multi-currency FX cache + MoneyConverter + ECB-direct FX plugin), E (accounts + overview screens on real ledger data). ledgerboy went from zero code to a working multi-currency ledger app: plugin runtime with the zero-calls guard, CSV import → ledger, FX conversion, and data-wired Accounts/Overview. Next: Phase F (transactions list + filters + tap-through detail), then G (categories + rules), H (budgets), I/J (assets), K (charts), L (onboarding), M (settings), O (release). Screen phases are Robolectric-verified now; on-device capture lands when the shared `medium_phone` AVD (currently driven by a concurrent strictlykeptboy QA session) frees._
 
 ## Stack (locked)
 
