@@ -1,8 +1,8 @@
 # ledgerboy — main build plan
 
-## Status: 🟢 BUILDING — Phase 0 + Phase A shipped; Phase X next
+## Status: 🟢 BUILDING — Phases 0 / A / X / C shipped; Phase B (CSV import) next
 
-_Repo skeleton, README, CLAUDE.md, this plan, and the per-area research prompts landed in the initial commit. Phase 0 (host) verified and Phase A (scaffold + UI shell) shipped + AVD-verified on 2026-06-14. Phase X (plugin runtime) is the next build target; Phase B+ are gated on the per-area decision docs (most already landed)._
+_Phase 0 (host) verified; Phase A (scaffold + UI shell), Phase X (connector plugin runtime), and Phase C (ledger schema + Money + transaction store) shipped + verified on 2026-06-14 (25 unit tests green, UI AVD-verified). Next: Phase B first connector plugin (CSV import — lowest-friction, no network/credentials, writes into the Phase C ledger and exercises the Phase X Configure→fetch→RowSink path end-to-end), then Phase D (FX) and the screen phases E/F._
 
 ## Stack (locked)
 
@@ -80,11 +80,20 @@ Goal: a buildable, sideload-able APK that boots into a blank Compose screen wire
 
 ---
 
-## Phase B — first banking connector plugin (research-gated)
+## Phase B — first connector plugin: CSV import — shipped in commit __PB__
 
-**Goal:** at least one banking `ConnectorPlugin` is wired end-to-end on top of the Phase X runtime, fetches a transaction list, and writes it into the ledger as `NormalizedTransaction` rows. Plugin is `disabled` by default; the user enables, configures (bank picker / credentials / OAuth consent), runs "Test connection", and only then does it transition to `Active` and start fetching.
+**Goal:** at least one `ConnectorPlugin` wired end-to-end on the Phase X runtime, fetching a transaction list and writing it into the Phase C ledger as `NormalizedTransaction` rows. First-to-ship is the **CSV import** plugin (banking-import.md priority #1: lowest setup friction, no network, no credentials, universal — works for any bank that exports a CSV), ahead of the credentialed banking connectors.
 
-**Gated on:** [`banking-research.md`](banking-research.md) and the per-source decision docs it spawns — [`banking-psd2.md`](banking-psd2.md) (per-bank PSD2-direct via Berlin Group NextGenPSD2), [`banking-fints.md`](banking-fints.md) (roll-our-own FinTS-client plugin, ~3,300 LOC), [`banking-import.md`](banking-import.md) (per-format import plugins as the universal fallback), [`banking-fx.md`](banking-fx.md) (ECB-direct + Bundesbank-direct FX plugins), [`banking-ebics.md`](banking-ebics.md) (rejected — out of personal-banking reach). Sub-steps are deferred to the research output; when the first plugin is chosen, expand the sub-step list here. Likely first-to-ship is the `fints-client` plugin (covers Sparkassen + Volksbanken + most German retail banks in one plugin) or a CSV import plugin (lowest setup friction, universal).
+**Decision:** picked CSV import over `fints-client` as the first plugin — it exercises the full Configure→fetch→RowSink→ledger path with the least surface (no OAuth/PIN/cert-pinning), validating Phase X + Phase C together. FinTS / per-bank PSD2-direct land next on the same runtime. Per [`banking-import.md`](banking-import.md) + [`connector-plugins.md`](connector-plugins.md).
+
+- [x] **B.1** Host SAF read seam: `PluginHost.readImportFile(uri, charset)` via ContentResolver (plugins never touch ContentResolver directly) + the Configure-shell import-picker plumbing (`OpenDocument` launcher registered while the ConfigScreen is composed).
+- [x] **B.2** Roll-our-own CSV core (`CsvParser`): RFC-4180 line splitter (quoted fields, doubled-quote escaping, configurable delimiter); integer-exact amount parser (decimal/thousands separators, signed / parenthesised / trailing-minus) with **no floating point**; SHA-256 content-hash `externalId` (first 16 bytes) for re-import dedup. stdlib-only.
+- [x] **B.3** `CsvDialect` model + presets: `GENERIC` (RFC-4180, comma/dot, ISO date, UTF-8) + `SPARKASSE_DE` (`;`/`,`, ISO-8859-1, dd.MM.yy) proving the per-bank-dialect sub-plugin model.
+- [x] **B.4** `csv-import` generic-mapping plugin (`ConnectorPlugin`, category Import): ConfigScreen (account name + format chips + SAF "Pick CSV file", persisted to the per-plugin namespace); `fetch` reads on-device, parses with the chosen dialect, emits rows. Registered in `PluginManifest`.
+- [x] **B.5** End-to-end on the Phase X runtime: Configure → "Test connection" activates → `fetch` → `RoomRowSink` → ledger, de-duplicated on `(accountRef, externalId)`. Network guard is a no-op for import (no calls), consistent with the zero-calls posture.
+- [x] **B.6** Tests: `CsvParserTest` (6 — generic + Sparkasse parse, amount math/edge cases, quoted fields, dedup-hash determinism). 30 unit tests green overall. Plugins screen verified live (CSV import registered under Import). _ConfigScreen live-capture deferred: the AVD was concurrently driven by another session; the config/fetch path is covered by tests + the parser/ledger ends._
+
+**Remaining banking connectors (future Phase B sub-plugins, same runtime):** CAMT.053 import, MT940 import, OFX import, QIF import; `fints-client`; per-bank PSD2-direct.
 
 ---
 

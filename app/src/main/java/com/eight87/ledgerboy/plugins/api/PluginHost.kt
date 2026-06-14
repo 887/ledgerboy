@@ -38,6 +38,15 @@ interface PluginHost {
    * only; banking / FX / asset plugins do not call this.
    */
   suspend fun pickImportFile(mimeTypes: List<String>): String?
+
+  /**
+   * Read a SAF content [uri] (from [pickImportFile]) as bytes via the
+   * host's ContentResolver. Plugins never touch the ContentResolver
+   * directly — this keeps the SAF surface inside the host. [charset] is
+   * the byte→text decoding the dialect declares. Returns null if the URI
+   * can't be opened.
+   */
+  suspend fun readImportFile(uri: String, charset: java.nio.charset.Charset): String?
 }
 
 /**

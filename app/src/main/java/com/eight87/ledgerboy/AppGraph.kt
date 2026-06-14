@@ -83,6 +83,7 @@ class AppGraph(
   fun pluginHost(pluginId: String): PluginHost =
     AppPluginHost(
       pluginId = pluginId,
+      appContext = applicationContext,
       config = pluginConfigStore,
       credentials = credentialStore,
       http = guardedHttpClient,

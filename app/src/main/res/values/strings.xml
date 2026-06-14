@@ -93,6 +93,16 @@
     <string name="plugin_config_privacy_label">What leaves your device</string>
     <string name="plugin_config_license_label">License</string>
 
+    <!-- ── CSV import plugin (Phase B) ── -->
+    <string name="csv_import_name">CSV import</string>
+    <string name="csv_import_desc">Import transactions from a CSV statement file your bank exports. The file is read on-device only — no network.</string>
+    <string name="csv_import_privacy">Nothing leaves your device. The CSV you pick is read locally and turned into transactions stored on this device.</string>
+    <string name="csv_import_account_label">Account name</string>
+    <string name="csv_import_format_label">Format</string>
+    <string name="csv_import_pick">Pick CSV file</string>
+    <string name="csv_import_selected">Selected: %1$s</string>
+    <string name="csv_import_none_selected">No file selected</string>
+
     <!-- ── Licenses screen ── -->
     <string name="licenses_screen_title">Open-source licenses</string>
     <string name="licenses_empty">License inventory is generated at build time and was not found in this build.</string>
