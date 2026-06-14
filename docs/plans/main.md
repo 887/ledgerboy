@@ -272,7 +272,7 @@ Sub-steps:
 
 ---
 
-## Phase P — polish + edge cases — code-level pass shipped in commit __PP__
+## Phase P — polish + edge cases — code-level pass shipped in commit 02d1f89
 
 **Goal:** the unglamorous one — overflow, empty states, accessibility, cold-start.
 
