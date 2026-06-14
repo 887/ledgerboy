@@ -46,7 +46,7 @@ Goal: a buildable host. These run once per developer machine. Tracked here so th
 
 ---
 
-## Phase A — scaffold — shipped in commit 65f054c
+## Phase A — scaffold — shipped in commit ae06cf8
 
 Goal: a buildable, sideload-able APK that boots into a blank Compose screen wired to the vertical-rail shell from tonearmboy. Everything that follows assumes this exists. Mirror whisperboy Phase A almost exactly — same template choice, same gradle setup, same package convention — plus the tonearmboy UI-shell copy from [`ui-shell.md`](ui-shell.md).
 
