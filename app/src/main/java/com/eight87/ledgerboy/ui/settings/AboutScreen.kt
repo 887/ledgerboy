@@ -24,8 +24,11 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -54,7 +57,7 @@ fun AboutScreen(
   val easterEgg = remember { EasterEggController() }
   val firstPrompt = stringResource(R.string.about_easter_first)
   val secondPrompt = stringResource(R.string.about_easter_second)
-  val revealText = stringResource(R.string.app_name)
+  var showEasterEgg by remember { mutableStateOf(false) }
 
   Scaffold(
     topBar = {
@@ -124,8 +127,7 @@ fun AboutScreen(
                 scope.launch { snackbar.showSnackbar(firstPrompt) }
               EasterEggController.Outcome.SecondPromptSnackbar ->
                 scope.launch { snackbar.showSnackbar(secondPrompt) }
-              EasterEggController.Outcome.Reveal ->
-                scope.launch { snackbar.showSnackbar(revealText) }
+              EasterEggController.Outcome.Reveal -> showEasterEgg = true
             }
           },
         )
@@ -153,5 +155,25 @@ fun AboutScreen(
         )
       }
     }
+  }
+
+  if (showEasterEgg) {
+    androidx.compose.material3.AlertDialog(
+      onDismissRequest = { showEasterEgg = false },
+      icon = {
+        Icon(
+          painter = androidx.compose.ui.res.painterResource(R.drawable.easter_egg_placeholder),
+          contentDescription = null,
+          tint = androidx.compose.ui.graphics.Color.Unspecified,
+          modifier = Modifier.size(96.dp),
+        )
+      },
+      title = { Text(stringResource(R.string.app_name)) },
+      confirmButton = {
+        androidx.compose.material3.TextButton(onClick = { showEasterEgg = false }) {
+          Text(stringResource(R.string.licenses_dialog_close))
+        }
+      },
+    )
   }
 }

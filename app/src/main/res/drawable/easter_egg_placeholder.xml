@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- R.2 — placeholder easter egg art (a coin glyph). The user swaps in the
+     final image at R.3; the reveal flow + slot are wired now. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <path
+        android:fillColor="#FF7FD1C4"
+        android:pathData="M60,12 C33.5,12 12,33.5 12,60 C12,86.5 33.5,108 60,108 C86.5,108 108,86.5 108,60 C108,33.5 86.5,12 60,12 Z M60,22 C81,22 98,39 98,60 C98,81 81,98 60,98 C39,98 22,81 22,60 C22,39 39,22 60,22 Z" />
+    <path
+        android:fillColor="#FFD3F2EC"
+        android:pathData="M56,38 h8 v6 q10,1 10,11 h-7 q0,-5 -7,-5 q-7,0 -7,4 q0,4 8,5 q12,2 12,11 q0,8 -9,9 v6 h-8 v-6 q-11,-1 -11,-12 h7 q0,6 8,6 q8,0 8,-5 q0,-4 -8,-5 q-12,-2 -12,-11 q0,-7 8,-8 z" />
+</vector>

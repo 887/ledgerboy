@@ -281,14 +281,14 @@ Sub-steps expand once Phase L's onboarding strings stabilize.
 
 ---
 
-## Phase R — easter egg
+## Phase R — easter egg — shipped in commit __PR__
 
 **Goal:** triple-tap on the launcher icon in About / Settings unlocks a small easter egg. Same shape as tonearmboy. Icon + easter egg image to be provided by the user later — leave a placeholder slot.
 
 Sub-steps:
 
-- [ ] **R.1** Triple-tap detector on the launcher-icon row (`AboutScreen` header), copied from tonearmboy's `EasterEggController.kt`.
-- [ ] **R.2** Placeholder easter egg image at `app/src/main/res/drawable/easter_egg_placeholder.xml`.
+- [x] **R.1** Triple-tap detector on the launcher-icon row (`AboutScreen` header), copied from tonearmboy's `EasterEggController.kt`.
+- [x] **R.2** Placeholder easter egg image at `app/src/main/res/drawable/easter_egg_placeholder.xml`.
 - [ ] **R.3** User-provided icon + image swap-in.
 
 ---
