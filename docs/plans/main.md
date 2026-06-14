@@ -153,7 +153,7 @@ _Carry-forward:_ date/amount-range filters, base-currency column, transaction sp
 
 ---
 
-## Phase G — categories + categorization — shipped in commit __PG__
+## Phase G — categories + categorization — shipped in commit d8b9e34
 
 **Goal:** the user can categorize transactions; a rules engine auto-categorizes (payee match, per-account predicate). Uncategorized count surfaced on the Overview.
 
