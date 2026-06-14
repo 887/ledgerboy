@@ -1,8 +1,8 @@
 # ledgerboy — main build plan
 
-## Status: 🟢 BUILDING — Phases 0 / A / X / C / B / D / E / F / G shipped; Phase H (budgets) next
+## Status: 🟢 BUILDING — Phases 0/A/X/C/B/D/E/F/G/H/I/K shipped + Phase W walks seeded; J/L/M/N/O/P/Q/R remain
 
-_Shipped + verified on 2026-06-14 (50 unit tests green): Phase 0 (host), A (scaffold + UI shell), X (connector plugin runtime), C (ledger + Money), B (CSV import), D (multi-currency FX + ECB plugin), E (accounts + overview), F (transactions list + category-assignment detail), G (categories + auto-categorization rules engine). ledgerboy is a working multi-currency ledger app — import a CSV, see grouped accounts + balances, drill into transactions, assign categories, and auto-categorize new imports by rule. Next: H (budgets), I/J (assets + asset connectors), K (charts), L (onboarding), M (settings full), O (release). Screen phases are Robolectric-verified; on-device capture lands when the shared `medium_phone` AVD (currently running a concurrent strictlykeptboy QA session) frees._
+_Shipped + verified on 2026-06-14 (59 unit tests green): Phase 0 (host), A (scaffold + UI shell), X (connector plugin runtime), C (ledger + Money), B (CSV import), D (multi-currency FX + ECB plugin), E (accounts + overview), F (transactions + category detail), G (categories + auto-categorization rules), H (category-monthly budgets), I (asset registry + valuation history), K (charts v0 — Canvas donut + cashflow bars). **Phase W**: persona-driven walk-scenario QA corpus seeded — 4 personas (DE Sparkasse saver / US multi-currency freelancer / UK property investor / CH privacy minimalist) under `docs/walks/`. ledgerboy is a working multi-currency, multi-asset ledger app with the disabled-by-default zero-calls connector model. Remaining: J (asset-price connectors), L (onboarding), M (full settings), N (widget), O (release pipeline), P (polish), Q (translations), R (easter egg), + W.6 on-device walk replays. UI phases are Robolectric-verified; on-device capture + walk replays land when the shared `medium_phone` AVD (busy with a sibling app's QA) frees._
 
 ## Stack (locked)
 
@@ -282,3 +282,33 @@ Sub-steps:
 - [ ] **R.1** Triple-tap detector on the launcher-icon row (`AboutScreen` header), copied from tonearmboy's `EasterEggController.kt`.
 - [ ] **R.2** Placeholder easter egg image at `app/src/main/res/drawable/easter_egg_placeholder.xml`.
 - [ ] **R.3** User-provided icon + image swap-in.
+
+---
+
+## Phase W — walk scenarios (persona-driven QA) — seed authored in commit __PW__
+
+**Goal:** a corpus of persona-driven, replayable end-to-end QA scenarios
+— the same concept as sister app strictlykeptboy's `docs/walks/`. Each
+walk puts a fictional user with a concrete goal in front of ledgerboy and
+scripts the journey (`taps X → expects Y`) with **[QA RISK]** flags.
+Walks prove the *experience* where unit/Robolectric tests prove the
+*logic*; they also keep the privacy posture honest (fictional data only,
+zero-network verified). See [`docs/walks/README.md`](../walks/README.md).
+
+- [x] **W.1** `docs/walks/README.md` — the walk concept, structure, hard
+      privacy rules, and how to replay.
+- [x] **W.2** `de-sparkasse-saver` — import a Sparkasse CSV → accounts →
+      categories + rules → monthly budget → charts (Phases X/B/C/E/F/G/H/K).
+- [x] **W.3** `us-freelancer-multicurrency` — two currencies, ECB FX
+      plugin (direct + audited), per-currency Overview, cashflow charts
+      (Phases B/D/E/K).
+- [x] **W.4** `uk-property-investor` — asset registry: real estate +
+      vehicle, manual valuation history (Phase I).
+- [x] **W.5** `ch-privacy-minimalist` — prove zero network on first
+      launch, audit Network usage, use fully offline (Phase X posture + B).
+- [ ] **W.6** Replay each walk on-device (AVD / wifi-adb), record results
+      in a dated `docs/walks/RESULTS-<date>.md`, file any `[QA RISK]` that
+      fires as a defect, and iterate dev+QA until a clean replay. _Blocked
+      on the shared `medium_phone` AVD freeing up._
+- [ ] **W.7** Grow the persona set as new verticals land (e.g. crypto
+      holder, restaurant owner, household with shared accounts).
