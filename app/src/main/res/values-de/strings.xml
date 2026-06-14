@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Q — German (DACH) translation. Partial override; any key not present
+  here falls back to the canonical English at runtime (Android default,
+  intended — not a placeholder). Authored user + Claude, English
+  canonical. English-only schema identifiers stay in code; this file is
+  i18n display strings only.
+-->
+<resources>
+    <!-- Navigation destinations -->
+    <string name="dest_overview">Übersicht</string>
+    <string name="dest_accounts">Konten</string>
+    <string name="dest_budgets">Budgets</string>
+    <string name="dest_assets">Vermögenswerte</string>
+    <string name="dest_charts">Diagramme</string>
+    <string name="dest_settings">Einstellungen</string>
+
+    <!-- Common -->
+    <string name="cd_back">Zurück</string>
+
+    <!-- Placeholder bodies -->
+    <string name="placeholder_overview">Hier erscheinen Ihr Nettovermögen, die letzten Aktivitäten und die Anzahl nicht kategorisierter Buchungen.</string>
+
+    <!-- Settings root -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_group_general">Allgemein</string>
+    <string name="settings_group_connectors">Verbindungen</string>
+    <string name="settings_group_data">Daten</string>
+    <string name="settings_group_about">Info</string>
+    <string name="settings_base_currency">Basiswährung</string>
+    <string name="settings_appearance">Darstellung</string>
+    <string name="settings_plugins">Plugins</string>
+    <string name="settings_plugins_sub">Bank-, Kurs-, Wechselkurs- und Import-Verbindungen</string>
+    <string name="settings_import">Import</string>
+    <string name="settings_privacy">Datenschutz</string>
+    <string name="settings_security">Sicherheit</string>
+    <string name="settings_categories">Kategorien &amp; Regeln</string>
+    <string name="settings_categories_sub">Buchungen ordnen und beim Import automatisch kategorisieren</string>
+    <string name="settings_about">Über ledgerboy</string>
+    <string name="settings_about_sub">Version, Quellcode und Lizenzen</string>
+    <string name="settings_coming_soon">Demnächst</string>
+
+    <!-- Plugins -->
+    <string name="plugins_title">Plugins</string>
+    <string name="plugins_privacy_banner">Jede Verbindung ist standardmäßig deaktiviert. ledgerboy stellt keine Netzwerkverbindungen her, bis Sie selbst eine aktivieren und einrichten.</string>
+    <string name="plugins_empty_category">In dieser Version noch keine Verbindungen.</string>
+    <string name="plugins_category_banking">Bank</string>
+    <string name="plugins_category_asset_price">Kurse</string>
+    <string name="plugins_category_fx">Wechselkurse</string>
+    <string name="plugins_category_import">Import</string>
+    <string name="plugins_category_regional_index">Regionale Indizes</string>
+    <string name="plugins_state_disabled">Deaktiviert</string>
+    <string name="plugins_state_enabled">Aktiviert, nicht eingerichtet</string>
+    <string name="plugins_state_configured">Eingerichtet</string>
+    <string name="plugins_state_active">Aktiv</string>
+    <string name="plugins_configure">Einrichten</string>
+    <string name="plugins_network_usage">Netzwerknutzung</string>
+    <string name="plugins_test_connection">Verbindung testen</string>
+
+    <!-- Network usage -->
+    <string name="network_usage_title">Netzwerknutzung</string>
+    <string name="network_usage_empty">Keine Verbindung hat eine Netzwerkanfrage gestellt. ledgerboy hat nichts gesendet.</string>
+    <string name="network_usage_bytes_in">Empfangen</string>
+    <string name="network_usage_bytes_out">Gesendet</string>
+    <string name="network_usage_fetches">Abrufe</string>
+    <string name="network_usage_errors">Fehler</string>
+    <string name="network_usage_endpoints">Aufgerufene Endpunkte</string>
+
+    <!-- Accounts / Overview -->
+    <string name="accounts_empty_title">Noch keine Konten</string>
+    <string name="overview_balances_title">Salden nach Währung</string>
+    <string name="overview_empty_title">Noch nichts vorhanden</string>
+    <string name="overview_stat_accounts">Konten</string>
+    <string name="overview_stat_uncategorized">Nicht kategorisierte Buchungen</string>
+
+    <!-- Transactions -->
+    <string name="transactions_filter_all">Alle</string>
+    <string name="transactions_filter_income">Einnahmen</string>
+    <string name="transactions_filter_expense">Ausgaben</string>
+    <string name="transactions_search">Empfänger suchen</string>
+    <string name="transaction_uncategorized">Nicht kategorisiert</string>
+    <string name="transaction_detail_category">Kategorie</string>
+
+    <!-- Budgets -->
+    <string name="budgets_empty_title">Noch keine Budgets</string>
+    <string name="budgets_add_title">Neues Monatsbudget</string>
+    <string name="budgets_amount_hint">Monatslimit</string>
+    <string name="budgets_add">Budget hinzufügen</string>
+    <string name="budgets_over">Über dem Budget</string>
+
+    <!-- Assets -->
+    <string name="assets_empty_title">Noch keine Vermögenswerte</string>
+    <string name="assets_add_title">Neuer Vermögenswert</string>
+    <string name="asset_name_hint">Name des Vermögenswerts</string>
+    <string name="asset_cost_hint">Anschaffungskosten</string>
+    <string name="assets_add">Vermögenswert hinzufügen</string>
+    <string name="asset_class_RealEstate">Immobilie</string>
+    <string name="asset_class_Vehicle">Fahrzeug</string>
+    <string name="asset_class_Security">Wertpapier</string>
+    <string name="asset_class_Crypto">Krypto</string>
+    <string name="asset_class_Collectible">Sammlerstück</string>
+    <string name="asset_class_Generic">Sonstiges</string>
+    <string name="asset_detail_history">Bewertungsverlauf</string>
+    <string name="asset_detail_add_valuation">Bewertung erfassen</string>
+
+    <!-- Charts -->
+    <string name="charts_empty_title">Noch keine Daten für Diagramme</string>
+    <string name="charts_spending_title">Ausgaben diesen Monat</string>
+    <string name="charts_cashflow_title">Cashflow (6 Monate)</string>
+    <string name="charts_income">Einnahmen</string>
+    <string name="charts_expense">Ausgaben</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Willkommen bei ledgerboy</string>
+    <string name="onboarding_welcome_body">Ein Finanztracker, der zuerst lokal arbeitet. Ihre Daten bleiben auf diesem Gerät, und ledgerboy stellt keine Netzwerkverbindungen her, bis Sie selbst eine Verbindung aktivieren.</string>
+    <string name="onboarding_base_currency_title">Basiswährung wählen</string>
+    <string name="onboarding_base_currency_body">Nettovermögen und Summen werden in dieser Währung angezeigt. Sie können sie später in den Einstellungen ändern.</string>
+    <string name="onboarding_get_started">Los geht\'s</string>
+
+    <!-- About -->
+    <string name="about_title">Info</string>
+    <string name="about_version_label">Version</string>
+    <string name="about_build_label">Build</string>
+    <string name="about_source_label">Quellcode</string>
+    <string name="about_license_label">Lizenz</string>
+    <string name="about_oss_label">Open-Source-Lizenzen</string>
+
+    <!-- Licenses -->
+    <string name="licenses_screen_title">Open-Source-Lizenzen</string>
+    <string name="licenses_dialog_close">Schließen</string>
+</resources>

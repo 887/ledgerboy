@@ -276,13 +276,14 @@ Sub-steps expand once everything above lands.
 
 ---
 
-## Phase Q — translations
+## Phase Q — translations — first locale shipped in commit __PQ__
 
-**Goal:** first non-English locale lands. German (DACH, since the FinTS-client plugin + per-bank PSD2-direct DACH plugins are the v1 banking surface) is the natural first target.
+**Goal:** first non-English locale lands. German (DACH) first.
 
-Mirrors tonearmboy / whisperboy translations workflow — user + Claude per-language, English canonical, missing keys fall back to English at runtime, no third-party translation service.
+- [x] **Q.1** `values-de/strings.xml` — German translation of the user-facing strings (navigation, settings, plugins, network-usage, accounts/overview, transactions, budgets, assets, charts, onboarding, about, licenses). Partial override; missing keys fall back to English at runtime (intended). English canonical; schema identifiers stay English (no German jargon in code).
+- [x] **Q.2** Builds clean with the locale variant. _Live locale-switch AVD smoke (watch for compound-word overflow) deferred — shared emulator busy._
 
-Sub-steps expand once Phase L's onboarding strings stabilize.
+_Carry-forward:_ more locales as onboarding/feature strings stabilize; a `translation-progress.sh` README table like the siblings.
 
 ---
 
