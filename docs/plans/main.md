@@ -276,7 +276,7 @@ Sub-steps expand once everything above lands.
 
 ---
 
-## Phase Q — translations — first locale shipped in commit __PQ__
+## Phase Q — translations — first locale shipped in commit e333907
 
 **Goal:** first non-English locale lands. German (DACH) first.
 
