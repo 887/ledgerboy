@@ -4,12 +4,16 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.room.Room
 import androidx.work.WorkManager
+import com.eight87.ledgerboy.data.LedgerRepository
+import com.eight87.ledgerboy.data.RoomLedgerRepository
+import com.eight87.ledgerboy.data.RoomRowSink
+import com.eight87.ledgerboy.data.db.LedgerDatabase
 import com.eight87.ledgerboy.plugins.api.PluginHost
 import com.eight87.ledgerboy.plugins.api.PluginManifest
 import com.eight87.ledgerboy.plugins.api.RowSink
 import com.eight87.ledgerboy.plugins.runtime.AppPluginHost
-import com.eight87.ledgerboy.plugins.runtime.InMemoryRowSink
 import com.eight87.ledgerboy.plugins.runtime.KeystoreCredentialStore
 import com.eight87.ledgerboy.plugins.runtime.PluginConfigStore
 import com.eight87.ledgerboy.plugins.runtime.PluginNetworkGuard
@@ -49,10 +53,24 @@ class AppGraph(
 
   val guardedHttpClient: OkHttpClient = PluginNetworkGuard.buildClient(pluginRuntime)
 
-  val pluginScheduler = PluginScheduler(WorkManager.getInstance(applicationContext))
+  // Lazy so AppGraph construction doesn't touch WorkManager (keeps the
+  // composition root cheap to build, and Robolectric unit tests that
+  // never schedule don't need WorkManager initialized).
+  val pluginScheduler by lazy { PluginScheduler(WorkManager.getInstance(applicationContext)) }
 
-  /** Interim in-memory sink; becomes Room-backed in Phase C/D. */
-  val rowSink: RowSink = InMemoryRowSink()
+  // ── Ledger (Phase C) ──
+  val ledgerDatabase: LedgerDatabase =
+    Room.databaseBuilder(applicationContext, LedgerDatabase::class.java, "ledger.db")
+      .build()
+
+  val ledgerRepository: LedgerRepository = RoomLedgerRepository(
+    accountDao = ledgerDatabase.accountDao(),
+    transactionDao = ledgerDatabase.transactionDao(),
+    categoryDao = ledgerDatabase.categoryDao(),
+  )
+
+  /** Room-backed sink: connector rows land in the ledger, de-duplicated. */
+  val rowSink: RowSink = RoomRowSink(ledgerRepository)
 
   /**
    * Settable SAF import-picker hook: the Configure-flow shell registers a

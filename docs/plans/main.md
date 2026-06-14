@@ -88,11 +88,19 @@ Goal: a buildable, sideload-able APK that boots into a blank Compose screen wire
 
 ---
 
-## Phase C — ledger schema + transaction store
+## Phase C — ledger schema + transaction store — shipped in commit __PC__
 
 **Goal:** Room schema for `AccountEntity`, `TransactionEntity`, `CategoryEntity`, and the join tables. `Money` value class implemented (integer minor units, currency-aware). Transactions are write-once-ish — edits land as new revisions with an `originalId` pointer.
 
-**Gated on:** Phase B (so the schema accommodates real connector output) and partly on [`security-research.md`](security-research.md) (so encryption is baked in, not retrofitted). Sub-steps expand once Phase B's first connector decision is locked.
+**Gated on:** Phase B (so the schema accommodates real connector output) and partly on [`security-research.md`](security-research.md) (so encryption is baked in, not retrofitted). Built ahead of Phase B because the first connector (CSV import) needs the ledger to write into; the schema already carries the connector `externalId` dedup key + `accountRef`, so it accommodates real connector output.
+
+- [x] **C.1** `Money` type — integer minor units (`Long`) + `CurrencyCode` value class; exact `+`/`-`/`*`/unary-minus via `Math.*Exact` (overflow throws, never wraps); cross-currency arithmetic rejected; `format()` via `NumberFormat.getCurrencyInstance(locale)` with the currency's own fraction digits. Pure Kotlin, no Android deps.
+- [x] **C.2** Currency minor-unit digits resolved through `java.util.Currency` (EUR/USD 2, JPY 0, BHD 3, …); no hand-rolled tables.
+- [x] **C.3** Room entities: `AccountEntity` (stable id = source accountRef, type/institution/hidden/order), `TransactionEntity` (money as `amountMinor`+`currency` columns for query power; unique `(accountId, externalId)` dedup index; `originalId` revision pointer), `CategoryEntity` (one-level parent hierarchy). FK + indices.
+- [x] **C.4** DAOs: `AccountDao`, `TransactionDao` (dedup `INSERT OR IGNORE`, latest-revision views via `NOT EXISTS originalId`, balance sum, uncategorized count), `CategoryDao`.
+- [x] **C.5** `LedgerDatabase` (v1, exportSchema) + enum `TypeConverters`; money/time stored as primitive columns (no converters). SQLCipher `openHelperFactory` slots in at the security phase, transparent to the schema.
+- [x] **C.6** `LedgerRepository` interface + `RoomLedgerRepository`; domain models carry `Money`; `RoomRowSink` maps connector `NormalizedTransaction` → stored row, de-duplicated, auto-creating a minimal account. Wired into `AppGraph` (replaces the Phase X in-memory sink).
+- [x] **C.7** Tests: `MoneyTest` (8 — arithmetic/overflow/cross-currency/format) + Robolectric `LedgerRepositoryTest` (5 — dedup, balance, latest-revision, uncategorized count, auto-account). 25 unit tests green overall.
 
 ---
 
