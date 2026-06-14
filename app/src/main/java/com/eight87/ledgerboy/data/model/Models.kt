@@ -33,3 +33,11 @@ data class Category(
   val parentId: String?,
   val colorArgb: Long?,
 )
+
+data class AssetSummary(
+  val id: String,
+  val name: String,
+  val assetClass: com.eight87.ledgerboy.data.db.AssetClass,
+  val currentValue: Money,
+  val acquisitionCost: Money,
+)

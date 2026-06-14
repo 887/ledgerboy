@@ -65,6 +65,7 @@ class AppGraph(
         LedgerDatabase.MIGRATION_1_2,
         LedgerDatabase.MIGRATION_2_3,
         LedgerDatabase.MIGRATION_3_4,
+        LedgerDatabase.MIGRATION_4_5,
       )
       .build()
 
@@ -75,6 +76,8 @@ class AppGraph(
     fxRateDao = ledgerDatabase.fxRateDao(),
     categoryRuleDao = ledgerDatabase.categoryRuleDao(),
     budgetDao = ledgerDatabase.budgetDao(),
+    assetDao = ledgerDatabase.assetDao(),
+    valuationEventDao = ledgerDatabase.valuationEventDao(),
   )
 
   /** Room-backed sink: connector rows land in the ledger, de-duplicated. */

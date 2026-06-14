@@ -50,6 +50,9 @@ sealed interface Destination : NavKey
 // ── Categories + rules (Phase G) — from Settings ──
 @Serializable data object SettingsCategories : Destination
 
+// ── Asset detail (Phase I) — tap-through from Assets ──
+@Serializable data class AssetDetail(val assetId: String, val assetName: String, val currency: String) : Destination
+
 /**
  * The rail items, in display order. Each maps a top-level [Destination]
  * to its rail icon + label. Adding a destination is one entry here plus

@@ -71,6 +71,26 @@
     <string name="budgets_spent_of">%1$s of %2$s</string>
     <string name="budgets_over">Over budget</string>
 
+    <!-- ── Assets screens (Phase I) ── -->
+    <string name="assets_empty_title">No assets yet</string>
+    <string name="assets_empty_body">Add real estate, a vehicle, securities, crypto, or a collectible to track its value over time.</string>
+    <string name="assets_add_title">New asset</string>
+    <string name="asset_name_hint">Asset name</string>
+    <string name="asset_cost_hint">Acquisition cost</string>
+    <string name="assets_add">Add asset</string>
+    <string name="asset_class_RealEstate">Real estate</string>
+    <string name="asset_class_Vehicle">Vehicle</string>
+    <string name="asset_class_Security">Security</string>
+    <string name="asset_class_Crypto">Crypto</string>
+    <string name="asset_class_Collectible">Collectible</string>
+    <string name="asset_class_Generic">Other</string>
+    <string name="asset_detail_history">Valuation history</string>
+    <string name="asset_detail_revalue_hint">New value</string>
+    <string name="asset_detail_add_valuation">Record valuation</string>
+    <string name="asset_detail_acquired">Acquired for %1$s</string>
+    <string name="asset_detail_no_history">No valuations yet. Record one to start the history.</string>
+    <string name="asset_valuation_source_manual">manual</string>
+
     <!-- ── Settings root ── -->
     <string name="settings_title">Settings</string>
     <string name="settings_group_general">General</string>

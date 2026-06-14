@@ -46,6 +46,11 @@ class AccountsOverviewScreenTest {
     override suspend fun upsertBudget(budget: com.eight87.ledgerboy.data.db.BudgetEntity) = Unit
     override suspend fun deleteBudget(id: String) = Unit
     override fun observeBudgetProgress(startEpochMillis: Long, endEpochMillis: Long): Flow<List<com.eight87.ledgerboy.data.budget.BudgetProgress>> = flowOf(emptyList())
+    override fun observeAssets(): Flow<List<com.eight87.ledgerboy.data.model.AssetSummary>> = flowOf(emptyList())
+    override suspend fun upsertAsset(asset: com.eight87.ledgerboy.data.db.AssetEntity) = Unit
+    override suspend fun deleteAsset(id: String) = Unit
+    override fun observeValuations(assetId: String): Flow<List<com.eight87.ledgerboy.data.db.ValuationEventEntity>> = flowOf(emptyList())
+    override suspend fun addValuation(event: com.eight87.ledgerboy.data.db.ValuationEventEntity) = Unit
     override suspend fun writeFxRate(base: String, quote: String, rateScaled1e8: Long, asOfEpochMillis: Long) = Unit
     override suspend fun fxRateOnOrBefore(base: String, quote: String, asOfEpochMillis: Long): Long? = null
     override suspend fun writeNormalizedTransaction(row: NormalizedTransaction) = true

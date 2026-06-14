@@ -19,7 +19,16 @@ class RoomRowSink(
     when (row) {
       is NormalizedTransaction -> ledger.writeNormalizedTransaction(row)
       is FxRateRow -> ledger.writeFxRate(row.baseCurrency, row.quoteCurrency, row.rateScaled1e8, row.asOfEpochMillis)
-      is ValuationEventRow -> Unit // Phase I/J — valuation history sink
+      is ValuationEventRow -> ledger.addValuation(
+        com.eight87.ledgerboy.data.db.ValuationEventEntity(
+          id = "${row.assetRef}:${row.asOfEpochMillis}:${row.source}",
+          assetId = row.assetRef,
+          valueMinor = row.valueMinor,
+          currency = row.currency,
+          asOf = row.asOfEpochMillis,
+          source = row.source,
+        ),
+      )
     }
   }
 }

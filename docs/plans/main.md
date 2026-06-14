@@ -185,11 +185,16 @@ _Carry-forward:_ envelope + rolling shapes; per-budget custom period; budget ale
 
 ---
 
-## Phase I — asset registry
+## Phase I — asset registry — shipped in commit __PI__
 
-**Goal:** the user can add an asset (real estate, vehicle, security, collectible, generic-with-history). Each asset has a current value, an acquisition cost, and a `ValuationEvent` history (date + value + source). Manual revaluation lands an event; automated revaluations from per-class connectors land events with `source = "<connector>"`.
+**Goal:** add an asset (real estate / vehicle / security / crypto / collectible / generic) with an acquisition cost and a `ValuationEvent` history (date + value + source). Manual revaluation lands a `source="manual"` event; per-class connectors (Phase J) land `source="<connector>"` events.
 
-**Gated on:** [`asset-research.md`](asset-research.md) and the per-class decision docs.
+- [x] **I.1** `AssetEntity` + `ValuationEventEntity` (+ `AssetClass`) + DAOs; `AssetWithValue` projection (current value = latest valuation, falling back to acquisition cost). Room v4→v5 `MIGRATION_4_5` + `AssetClass` converter.
+- [x] **I.2** Repository: `observeAssets` (with current value), `upsertAsset` / `deleteAsset`, `observeValuations`, `addValuation`. The Phase X `ValuationEventRow` sink now lands valuation events — Phase J asset connectors emit straight into the history.
+- [x] **I.3** Assets screen (rail destination): assets grouped by class with current value, add-asset (name + class + acquisition cost); tap → Asset detail with the valuation history + a manual "Record valuation" form. Replaces the Assets placeholder.
+- [x] **I.4** Tests: repo asset current value follows the latest valuation (and falls back to acquisition cost) + valuation history count. 56 unit tests green overall. _Live AVD capture deferred (shared emulator busy)._
+
+_Phase J unblocked:_ asset-price connectors (`ConnectorPlugin` in `AssetPrice` / `RegionalIndex`) emit `ValuationEventRow`s into this registry on the Phase X runtime.
 
 ---
 

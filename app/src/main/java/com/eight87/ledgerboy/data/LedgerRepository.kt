@@ -57,6 +57,13 @@ interface LedgerRepository {
     endEpochMillis: Long,
   ): Flow<List<com.eight87.ledgerboy.data.budget.BudgetProgress>>
 
+  /** I — assets + valuation history. */
+  fun observeAssets(): Flow<List<com.eight87.ledgerboy.data.model.AssetSummary>>
+  suspend fun upsertAsset(asset: com.eight87.ledgerboy.data.db.AssetEntity)
+  suspend fun deleteAsset(id: String)
+  fun observeValuations(assetId: String): Flow<List<com.eight87.ledgerboy.data.db.ValuationEventEntity>>
+  suspend fun addValuation(event: com.eight87.ledgerboy.data.db.ValuationEventEntity)
+
   /** Cache one EUR-paired FX rate (rate scaled by 1e8). */
   suspend fun writeFxRate(base: String, quote: String, rateScaled1e8: Long, asOfEpochMillis: Long)
 
@@ -79,6 +86,8 @@ class RoomLedgerRepository(
   private val fxRateDao: com.eight87.ledgerboy.data.db.FxRateDao,
   private val categoryRuleDao: com.eight87.ledgerboy.data.db.CategoryRuleDao,
   private val budgetDao: com.eight87.ledgerboy.data.db.BudgetDao,
+  private val assetDao: com.eight87.ledgerboy.data.db.AssetDao,
+  private val valuationEventDao: com.eight87.ledgerboy.data.db.ValuationEventDao,
   private val now: () -> Long = { System.currentTimeMillis() },
 ) : LedgerRepository {
 
@@ -166,6 +175,29 @@ class RoomLedgerRepository(
           }
         }
       }
+
+  override fun observeAssets(): Flow<List<com.eight87.ledgerboy.data.model.AssetSummary>> =
+    assetDao.observeAssetsWithValue().map { list ->
+      list.map { row ->
+        com.eight87.ledgerboy.data.model.AssetSummary(
+          id = row.asset.id,
+          name = row.asset.name,
+          assetClass = row.asset.assetClass,
+          currentValue = Money(row.currentValueMinor, CurrencyCode(row.asset.currency)),
+          acquisitionCost = Money(row.asset.acquisitionCostMinor, CurrencyCode(row.asset.currency)),
+        )
+      }
+    }
+
+  override suspend fun upsertAsset(asset: com.eight87.ledgerboy.data.db.AssetEntity) = assetDao.upsert(asset)
+
+  override suspend fun deleteAsset(id: String) = assetDao.delete(id)
+
+  override fun observeValuations(assetId: String): Flow<List<com.eight87.ledgerboy.data.db.ValuationEventEntity>> =
+    valuationEventDao.observeForAsset(assetId)
+
+  override suspend fun addValuation(event: com.eight87.ledgerboy.data.db.ValuationEventEntity) =
+    valuationEventDao.upsert(event)
 
   override suspend fun applyRulesToUncategorized(): Int {
     val rules = categoryRuleDao.all()

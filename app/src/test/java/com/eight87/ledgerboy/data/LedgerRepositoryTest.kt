@@ -32,7 +32,7 @@ class LedgerRepositoryTest {
     ).allowMainThreadQueries().build()
     repo = RoomLedgerRepository(
       db.accountDao(), db.transactionDao(), db.categoryDao(), db.fxRateDao(),
-      db.categoryRuleDao(), db.budgetDao(),
+      db.categoryRuleDao(), db.budgetDao(), db.assetDao(), db.valuationEventDao(),
     ) { 1_000L }
   }
 
@@ -156,6 +156,30 @@ class LedgerRepositoryTest {
     val progress = repo.observeBudgetProgress(start, end).first()
     assertEquals(1, progress.size)
     assertEquals(3000, progress.first().spent.minorUnits) // €30 spent of €100
+  }
+
+  @Test
+  fun `asset current value follows the latest valuation`() = runTest {
+    repo.upsertAsset(
+      com.eight87.ledgerboy.data.db.AssetEntity(
+        id = "asset-1", name = "Flat", assetClass = com.eight87.ledgerboy.data.db.AssetClass.RealEstate,
+        currency = "EUR", acquisitionCostMinor = 30_000_000, acquisitionDate = 1_000L,
+      ),
+    )
+    // No valuation yet → current value falls back to acquisition cost.
+    assertEquals(30_000_000, repo.observeAssets().first().first().currentValue.minorUnits)
+    repo.addValuation(
+      com.eight87.ledgerboy.data.db.ValuationEventEntity(
+        id = "v1", assetId = "asset-1", valueMinor = 31_500_000, currency = "EUR", asOf = 2_000L, source = "manual",
+      ),
+    )
+    repo.addValuation(
+      com.eight87.ledgerboy.data.db.ValuationEventEntity(
+        id = "v2", assetId = "asset-1", valueMinor = 33_000_000, currency = "EUR", asOf = 5_000L, source = "manual",
+      ),
+    )
+    assertEquals(33_000_000, repo.observeAssets().first().first().currentValue.minorUnits)
+    assertEquals(2, repo.observeValuations("asset-1").first().size)
   }
 
   @Test

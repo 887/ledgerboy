@@ -21,6 +21,8 @@ import androidx.navigation3.ui.NavDisplay
 import com.eight87.ledgerboy.AppGraph
 import com.eight87.ledgerboy.R
 import com.eight87.ledgerboy.ui.accounts.AccountsScreen
+import com.eight87.ledgerboy.ui.assets.AssetDetailScreen
+import com.eight87.ledgerboy.ui.assets.AssetsScreen
 import com.eight87.ledgerboy.ui.budgets.BudgetsScreen
 import com.eight87.ledgerboy.ui.categories.CategoriesScreen
 import com.eight87.ledgerboy.ui.overview.OverviewScreen
@@ -96,11 +98,12 @@ fun LedgerboyApp(graph: AppGraph) {
           }
           entry<Assets> {
             RootScaffold(R.string.dest_assets) {
-              PlaceholderScreen(
-                icon = RailItem.ASSETS.icon,
-                title = stringResource(R.string.dest_assets),
-                description = stringResource(R.string.placeholder_assets),
+              AssetsScreen(
+                ledger = graph.ledgerRepository,
                 modifier = it,
+                onAssetClick = { asset ->
+                  backStack.push(AssetDetail(asset.id, asset.name, asset.currentValue.currency.code))
+                },
               )
             }
           }
@@ -161,6 +164,15 @@ fun LedgerboyApp(graph: AppGraph) {
           }
           entry<SettingsCategories> {
             CategoriesScreen(ledger = graph.ledgerRepository, onBack = { backStack.pop() })
+          }
+          entry<AssetDetail> { key ->
+            AssetDetailScreen(
+              ledger = graph.ledgerRepository,
+              assetId = key.assetId,
+              assetName = key.assetName,
+              currency = key.currency,
+              onBack = { backStack.pop() },
+            )
           }
         },
       )

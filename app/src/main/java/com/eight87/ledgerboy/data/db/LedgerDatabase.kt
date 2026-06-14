@@ -21,8 +21,10 @@ import androidx.sqlite.execSQL
     FxRateEntity::class,
     CategoryRuleEntity::class,
     BudgetEntity::class,
+    AssetEntity::class,
+    ValuationEventEntity::class,
   ],
-  version = 4,
+  version = 5,
   exportSchema = true,
 )
 @TypeConverters(LedgerConverters::class)
@@ -33,6 +35,8 @@ abstract class LedgerDatabase : RoomDatabase() {
   abstract fun fxRateDao(): FxRateDao
   abstract fun categoryRuleDao(): CategoryRuleDao
   abstract fun budgetDao(): BudgetDao
+  abstract fun assetDao(): AssetDao
+  abstract fun valuationEventDao(): ValuationEventDao
 
   companion object {
     /** D.1 — v1→v2 adds the FX rate cache (banking-fx.md). */
@@ -77,6 +81,26 @@ abstract class LedgerDatabase : RoomDatabase() {
         connection.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_budgets_categoryId` ON `budgets` (`categoryId`)")
       }
     }
+
+    /** I — v4→v5 adds the asset registry + valuation history. */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+      override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+        connection.execSQL(
+          "CREATE TABLE IF NOT EXISTS `assets` (" +
+            "`id` TEXT NOT NULL, `name` TEXT NOT NULL, `assetClass` TEXT NOT NULL, " +
+            "`currency` TEXT NOT NULL, `acquisitionCostMinor` INTEGER NOT NULL, " +
+            "`acquisitionDate` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        )
+        connection.execSQL(
+          "CREATE TABLE IF NOT EXISTS `valuation_events` (" +
+            "`id` TEXT NOT NULL, `assetId` TEXT NOT NULL, `valueMinor` INTEGER NOT NULL, " +
+            "`currency` TEXT NOT NULL, `asOf` INTEGER NOT NULL, `source` TEXT NOT NULL, " +
+            "PRIMARY KEY(`id`), FOREIGN KEY(`assetId`) REFERENCES `assets`(`id`) " +
+            "ON UPDATE NO ACTION ON DELETE CASCADE)",
+        )
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_valuation_events_assetId_asOf` ON `valuation_events` (`assetId`, `asOf`)")
+      }
+    }
   }
 }
 
@@ -95,4 +119,11 @@ class LedgerConverters {
   @TypeConverter
   fun stringToRuleKind(value: String): RuleKind =
     runCatching { RuleKind.valueOf(value) }.getOrDefault(RuleKind.PayeeContains)
+
+  @TypeConverter
+  fun assetClassToString(value: AssetClass): String = value.name
+
+  @TypeConverter
+  fun stringToAssetClass(value: String): AssetClass =
+    runCatching { AssetClass.valueOf(value) }.getOrDefault(AssetClass.Generic)
 }
