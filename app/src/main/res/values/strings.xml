@@ -61,6 +61,16 @@
     <string name="categories_applied">Categorized %1$d transactions</string>
     <string name="categories_rule_summary">Payee contains \"%1$s\" → %2$s</string>
 
+    <!-- ── Budgets screen (Phase H) ── -->
+    <string name="budgets_empty_title">No budgets yet</string>
+    <string name="budgets_empty_body">Add a monthly spending limit for a category to track it here.</string>
+    <string name="budgets_add_title">New monthly budget</string>
+    <string name="budgets_amount_hint">Monthly limit</string>
+    <string name="budgets_add">Add budget</string>
+    <string name="budgets_no_categories">Add a category first (Settings → Categories &amp; rules).</string>
+    <string name="budgets_spent_of">%1$s of %2$s</string>
+    <string name="budgets_over">Over budget</string>
+
     <!-- ── Settings root ── -->
     <string name="settings_title">Settings</string>
     <string name="settings_group_general">General</string>

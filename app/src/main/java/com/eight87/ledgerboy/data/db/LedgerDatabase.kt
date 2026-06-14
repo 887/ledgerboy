@@ -20,8 +20,9 @@ import androidx.sqlite.execSQL
     CategoryEntity::class,
     FxRateEntity::class,
     CategoryRuleEntity::class,
+    BudgetEntity::class,
   ],
-  version = 3,
+  version = 4,
   exportSchema = true,
 )
 @TypeConverters(LedgerConverters::class)
@@ -31,6 +32,7 @@ abstract class LedgerDatabase : RoomDatabase() {
   abstract fun categoryDao(): CategoryDao
   abstract fun fxRateDao(): FxRateDao
   abstract fun categoryRuleDao(): CategoryRuleDao
+  abstract fun budgetDao(): BudgetDao
 
   companion object {
     /** D.1 — v1→v2 adds the FX rate cache (banking-fx.md). */
@@ -60,6 +62,19 @@ abstract class LedgerDatabase : RoomDatabase() {
         )
         connection.execSQL("CREATE INDEX IF NOT EXISTS `index_category_rules_categoryId` ON `category_rules` (`categoryId`)")
         connection.execSQL("CREATE INDEX IF NOT EXISTS `index_category_rules_priority` ON `category_rules` (`priority`)")
+      }
+    }
+
+    /** H — v3→v4 adds the budgets table (category-monthly). */
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+      override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+        connection.execSQL(
+          "CREATE TABLE IF NOT EXISTS `budgets` (" +
+            "`id` TEXT NOT NULL, `categoryId` TEXT NOT NULL, `limitMinor` INTEGER NOT NULL, " +
+            "`currency` TEXT NOT NULL, PRIMARY KEY(`id`), " +
+            "FOREIGN KEY(`categoryId`) REFERENCES `categories`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)",
+        )
+        connection.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_budgets_categoryId` ON `budgets` (`categoryId`)")
       }
     }
   }

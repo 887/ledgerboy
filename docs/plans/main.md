@@ -1,8 +1,8 @@
 # ledgerboy — main build plan
 
-## Status: 🟢 BUILDING — Phases 0 / A / X / C / B / D / E shipped; Phase F (transactions) next
+## Status: 🟢 BUILDING — Phases 0 / A / X / C / B / D / E / F / G shipped; Phase H (budgets) next
 
-_Shipped + verified on 2026-06-14 (42 unit tests green): Phase 0 (host), A (scaffold + UI shell), X (connector plugin runtime), C (ledger schema + Money + transaction store), B (CSV import connector), D (multi-currency FX cache + MoneyConverter + ECB-direct FX plugin), E (accounts + overview screens on real ledger data). ledgerboy went from zero code to a working multi-currency ledger app: plugin runtime with the zero-calls guard, CSV import → ledger, FX conversion, and data-wired Accounts/Overview. Next: Phase F (transactions list + filters + tap-through detail), then G (categories + rules), H (budgets), I/J (assets), K (charts), L (onboarding), M (settings), O (release). Screen phases are Robolectric-verified now; on-device capture lands when the shared `medium_phone` AVD (currently driven by a concurrent strictlykeptboy QA session) frees._
+_Shipped + verified on 2026-06-14 (50 unit tests green): Phase 0 (host), A (scaffold + UI shell), X (connector plugin runtime), C (ledger + Money), B (CSV import), D (multi-currency FX + ECB plugin), E (accounts + overview), F (transactions list + category-assignment detail), G (categories + auto-categorization rules engine). ledgerboy is a working multi-currency ledger app — import a CSV, see grouped accounts + balances, drill into transactions, assign categories, and auto-categorize new imports by rule. Next: H (budgets), I/J (assets + asset connectors), K (charts), L (onboarding), M (settings full), O (release). Screen phases are Robolectric-verified; on-device capture lands when the shared `medium_phone` AVD (currently running a concurrent strictlykeptboy QA session) frees._
 
 ## Stack (locked)
 
@@ -169,11 +169,19 @@ _Carry-forward:_ category colours on chart slices (Phase K); regex-rule UI (engi
 
 ---
 
-## Phase H — budgets (research-gated)
+## Phase H — budgets — shipped in commit __PH__
 
-**Goal:** the user can define budgets — envelope, category-monthly, or rolling — and see progress per period.
+**Goal:** the user can define budgets and see progress per period.
 
-**Gated on:** an early design pass picking the budget shape(s) we support. Could be one shape or more than one. Sub-steps expand once the shape is chosen.
+**Design pass (shape chosen):** v0 ships **category-monthly** budgets — a recurring monthly limit on one category — as the shape that pays its way first and composes directly with Phase G categories. Envelope + rolling are deferred behind the same `BudgetEntity` (a future `period` discriminator), not built speculatively.
+
+- [x] **H.1** `BudgetEntity` (one per category, unique index, FK cascade) + `BudgetDao` (incl. `netForCategoryInRange`); Room v3→v4 `MIGRATION_3_4`.
+- [x] **H.2** `BudgetMath` (pure): spent = flipped expense sign (income/refunds don't count as negative spend), fraction clamped to [0,1] for the bar, over-budget flagged independently; `MonthRange.of` computes the `[start,end)` month bounds.
+- [x] **H.3** Repository: `observeBudgets` / `upsertBudget` / `deleteBudget` + `observeBudgetProgress(start,end)` (reactive over budgets + categories + transactions).
+- [x] **H.4** Budgets screen (rail destination): per-budget progress bar (spent / limit, over-budget in the error colour) for the current month + add-budget (pick category + monthly limit). Replaces the Budgets placeholder.
+- [x] **H.5** Tests: `BudgetMathTest` (4 — spent sign, income ignored, over-budget clamp, month range) + repo budget-progress reflects categorized spending (1). 55 unit tests green overall. _Live AVD capture deferred (shared emulator busy)._
+
+_Carry-forward:_ envelope + rolling shapes; per-budget custom period; budget alerts.
 
 ---
 

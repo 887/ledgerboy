@@ -46,6 +46,17 @@ interface LedgerRepository {
   /** Run the rules over every uncategorized current transaction; returns the number categorized. */
   suspend fun applyRulesToUncategorized(): Int
 
+  /** H — budgets. */
+  fun observeBudgets(): Flow<List<com.eight87.ledgerboy.data.db.BudgetEntity>>
+  suspend fun upsertBudget(budget: com.eight87.ledgerboy.data.db.BudgetEntity)
+  suspend fun deleteBudget(id: String)
+
+  /** Budget progress for the month window [startEpochMillis, endEpochMillis). */
+  fun observeBudgetProgress(
+    startEpochMillis: Long,
+    endEpochMillis: Long,
+  ): Flow<List<com.eight87.ledgerboy.data.budget.BudgetProgress>>
+
   /** Cache one EUR-paired FX rate (rate scaled by 1e8). */
   suspend fun writeFxRate(base: String, quote: String, rateScaled1e8: Long, asOfEpochMillis: Long)
 
@@ -67,6 +78,7 @@ class RoomLedgerRepository(
   private val categoryDao: CategoryDao,
   private val fxRateDao: com.eight87.ledgerboy.data.db.FxRateDao,
   private val categoryRuleDao: com.eight87.ledgerboy.data.db.CategoryRuleDao,
+  private val budgetDao: com.eight87.ledgerboy.data.db.BudgetDao,
   private val now: () -> Long = { System.currentTimeMillis() },
 ) : LedgerRepository {
 
@@ -118,6 +130,42 @@ class RoomLedgerRepository(
     categoryRuleDao.upsert(rule)
 
   override suspend fun deleteRule(id: String) = categoryRuleDao.delete(id)
+
+  override fun observeBudgets(): Flow<List<com.eight87.ledgerboy.data.db.BudgetEntity>> =
+    budgetDao.observeAll()
+
+  override suspend fun upsertBudget(budget: com.eight87.ledgerboy.data.db.BudgetEntity) =
+    budgetDao.upsert(budget)
+
+  override suspend fun deleteBudget(id: String) = budgetDao.delete(id)
+
+  override fun observeBudgetProgress(
+    startEpochMillis: Long,
+    endEpochMillis: Long,
+  ): Flow<List<com.eight87.ledgerboy.data.budget.BudgetProgress>> =
+    kotlinx.coroutines.flow.combine(
+      budgetDao.observeAll(),
+      categoryDao.observeAll(),
+      transactionDao.observeCurrent(),
+    ) { budgets, categories, _ -> budgets to categories }
+      .let { flow ->
+        kotlinx.coroutines.flow.flow {
+          flow.collect { (budgets, categories) ->
+            val names = categories.associate { it.id to it.name }
+            emit(
+              budgets.map { b ->
+                val net = budgetDao.netForCategoryInRange(b.categoryId, startEpochMillis, endEpochMillis)
+                com.eight87.ledgerboy.data.budget.BudgetMath.progress(
+                  categoryId = b.categoryId,
+                  categoryName = names[b.categoryId] ?: b.categoryId,
+                  limit = com.eight87.ledgerboy.data.money.Money(b.limitMinor, CurrencyCode(b.currency)),
+                  netMinor = net,
+                )
+              },
+            )
+          }
+        }
+      }
 
   override suspend fun applyRulesToUncategorized(): Int {
     val rules = categoryRuleDao.all()

@@ -31,7 +31,8 @@ class LedgerRepositoryTest {
       LedgerDatabase::class.java,
     ).allowMainThreadQueries().build()
     repo = RoomLedgerRepository(
-      db.accountDao(), db.transactionDao(), db.categoryDao(), db.fxRateDao(), db.categoryRuleDao(),
+      db.accountDao(), db.transactionDao(), db.categoryDao(), db.fxRateDao(),
+      db.categoryRuleDao(), db.budgetDao(),
     ) { 1_000L }
   }
 
@@ -133,6 +134,28 @@ class LedgerRepositoryTest {
     )
     assertEquals(1, repo.applyRulesToUncategorized())
     assertEquals(0, repo.observeUncategorizedCount().first())
+  }
+
+  @Test
+  fun `budget progress reflects categorized spending in the month`() = runTest {
+    repo.upsertCategory(com.eight87.ledgerboy.data.db.CategoryEntity(id = "cat-food", name = "Food"))
+    // Two expenses in Jan 2026, one categorized to Food.
+    val jan10 = java.time.LocalDate.of(2026, 1, 10)
+      .atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+    repo.writeNormalizedTransaction(
+      NormalizedTransaction("t1", jan10, -3000, "EUR", "Market", "groceries", "acct-1"),
+    )
+    val txnId = db.transactionDao().byExternalId("acct-1", "t1")!!.id
+    repo.assignCategory(txnId, "cat-food")
+    repo.upsertBudget(
+      com.eight87.ledgerboy.data.db.BudgetEntity(
+        id = "b1", categoryId = "cat-food", limitMinor = 10000, currency = "EUR",
+      ),
+    )
+    val (start, end) = com.eight87.ledgerboy.data.budget.MonthRange.of(jan10, java.time.ZoneOffset.UTC)
+    val progress = repo.observeBudgetProgress(start, end).first()
+    assertEquals(1, progress.size)
+    assertEquals(3000, progress.first().spent.minorUnits) // €30 spent of €100
   }
 
   @Test
