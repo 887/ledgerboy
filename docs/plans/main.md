@@ -1,8 +1,8 @@
 # ledgerboy — main build plan
 
-## Status: 🟡 PRE-PHASE 0 (skeleton + research prompts only)
+## Status: 🟢 BUILDING — Phase 0 + Phase A shipped; Phase X next
 
-_Repo skeleton, README, CLAUDE.md, this plan, and the per-area research prompts landed in the initial commit. No code yet. Phase 0 is the first phase that actually does anything; Phase B+ are gated on the research-round agents producing the per-area decision docs._
+_Repo skeleton, README, CLAUDE.md, this plan, and the per-area research prompts landed in the initial commit. Phase 0 (host) verified and Phase A (scaffold + UI shell) shipped + AVD-verified on 2026-06-14. Phase X (plugin runtime) is the next build target; Phase B+ are gated on the per-area decision docs (most already landed)._
 
 ## Stack (locked)
 
@@ -26,41 +26,41 @@ _Repo skeleton, README, CLAUDE.md, this plan, and the per-area research prompts 
 Per the user's global CLAUDE.md rule:
 
 1. Numbered phases using typeable letters: `Phase A`, `Phase B`, … No `§` characters.
-2. Sub-step checkboxes inside each phase: `- [ ] **A.1** …`. A phase without sub-step checkboxes is forbidden — if you can't articulate sub-steps, write the design first.
+2. Sub-step checkboxes inside each phase: `- [x] **A.1** …`. A phase without sub-step checkboxes is forbidden — if you can't articulate sub-steps, write the design first.
 3. Tick as you ship: `- [x]` AND a `shipped in commit <id>` note on the phase header at the same time the work lands. Do not batch ticks until the end. (In jj repos, use jj change IDs — alphabetic prefix — not git commit hashes; jj change IDs survive rebases.)
 4. Mark the plan `## Status: ✅ DONE` once every phase is ticked. Obsolete plans get `## Status: OBSOLETE — superseded by …` instead.
 5. Research-round agents produce one `docs/plans/<area>-decision.md` (or `<area>-<source>.md`) per gate; the parent research file gets a "Decision: see …" pointer at the top when the decision lands.
 
 ---
 
-## Phase 0 — prerequisites (one-time, on the host)
+## Phase 0 — prerequisites (one-time, on the host) — shipped 2026-06-14
 
 Goal: a buildable host. These run once per developer machine. Tracked here so the environment is verifiable before agents go to work. Same machine as the rest of the family, so most are no-ops on this user's box, but tick them for completeness on a fresh checkout.
 
-- [ ] **0.1** Install Google's Android CLI: `curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/android -o ~/.local/bin/android && chmod +x ~/.local/bin/android`. Likely already present from tonearmboy / whisperboy — verify with `android --version`.
-- [ ] **0.2** `android sdk install platforms/android-34 build-tools/34.0.0` (and confirm `android-36` / `build-tools/36.0.0` present, since the project targets API 36 like its siblings). Likely already present.
-- [ ] **0.3** JDK 17+ available on the host for direct `./gradlew` invocations (the bundled JDK 21 in the Android CLI is fine for `android run`, but direct Gradle calls need a full JDK — see CLAUDE.md). `/usr/lib/jvm/java-26-openjdk` is the working path on this user's box.
-- [ ] **0.4** `mobile` MCP server registered at project scope in `.mcp.json` — already committed in the initial skeleton; verify with `claude mcp list` from inside the repo.
-- [ ] **0.5** `android-skills` MCP server registered at project scope in `.mcp.json` — already committed in the initial skeleton; verify with `claude mcp list` from inside the repo.
-- [ ] **0.6** Test target: headless AVD `medium_phone` (shared with the rest of the family). Created via `android emulator create --profile=medium_phone`. Should already exist; if not, `emulator -list-avds` will say so.
+- [x] **0.1** Install Google's Android CLI: `curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/android -o ~/.local/bin/android && chmod +x ~/.local/bin/android`. Likely already present from tonearmboy / whisperboy — verify with `android --version`.
+- [x] **0.2** `android sdk install platforms/android-34 build-tools/34.0.0` (and confirm `android-36` / `build-tools/36.0.0` present, since the project targets API 36 like its siblings). Likely already present.
+- [x] **0.3** JDK 17+ available on the host for direct `./gradlew` invocations (the bundled JDK 21 in the Android CLI is fine for `android run`, but direct Gradle calls need a full JDK — see CLAUDE.md). `/usr/lib/jvm/java-26-openjdk` is the working path on this user's box.
+- [x] **0.4** `mobile` MCP server registered at project scope in `.mcp.json` — already committed in the initial skeleton; verify with `claude mcp list` from inside the repo.
+- [x] **0.5** `android-skills` MCP server registered at project scope in `.mcp.json` — already committed in the initial skeleton; verify with `claude mcp list` from inside the repo.
+- [x] **0.6** Test target: headless AVD `medium_phone` (shared with the rest of the family). Created via `android emulator create --profile=medium_phone`. Should already exist; if not, `emulator -list-avds` will say so.
 
 ---
 
-## Phase A — scaffold
+## Phase A — scaffold — shipped in commit 65f054c
 
 Goal: a buildable, sideload-able APK that boots into a blank Compose screen wired to the vertical-rail shell from tonearmboy. Everything that follows assumes this exists. Mirror whisperboy Phase A almost exactly — same template choice, same gradle setup, same package convention — plus the tonearmboy UI-shell copy from [`ui-shell.md`](ui-shell.md).
 
-- [ ] **A.0** Browse `android create list` and pick the closest official template. Default expectation: `empty-activity` (same template tonearmboy / whisperboy used).
-- [ ] **A.1** `android create --name=ledgerboy --output=. <template>` from inside the repo root. Verify the generated layout: `app/`, `gradle/wrapper/`, `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`. Rename package from `com.example.ledgerboy` to `com.eight87.ledgerboy`. Rename theme to `LedgerboyTheme`. Rename activity to `LedgerboyActivity`.
-- [ ] **A.2** Add baseline deps to `app/build.gradle.kts` via `libs.versions.toml`: Compose BOM (Material 3 Expressive override per [`m3-expressive.md`](m3-expressive.md)), Material Icons Extended, Lifecycle (runtime + viewmodel + compose), Activity Compose, Navigation 3, Room (runtime + ktx + KSP), DataStore Preferences, `androidx.documentfile`, `kotlinx-serialization-json`, Licensee Gradle plugin (per [`oss-licenses.md`](oss-licenses.md)).
-- [ ] **A.3** `AndroidManifest.xml` adds: `INTERNET` (for banking APIs), `USE_BIOMETRIC` (for credential unlock — research-gated, declared early). No `READ_EXTERNAL_STORAGE` — SAF only. `minSdk = 28` (matching the family floor). `compileSdk = 36`, `targetSdk = 36`.
-- [ ] **A.4** `.gitignore` covers Android build artifacts plus the bank-statement file extensions denied at repo root — already committed in the initial skeleton; verify the Phase-A-generated `app/.gitignore` (with `/build`) coexists cleanly with the root `.gitignore`.
-- [ ] **A.5** Copy the **vertical-navigation-rail + top-bar** shell from tonearmboy per [`ui-shell.md`](ui-shell.md): `LedgerboyApp.kt`, `LedgerboyBackStack.kt`, `Destinations.kt`, `RouteScope.kt`, `RouteScopeFactory.kt`, `SectionTitle.kt`. Adapt content to ledgerboy's destinations (`Overview`, `Accounts`, `Budgets`, `Assets`, `Charts`, `Settings`). The destinations themselves are placeholder Composables in Phase A — real surfaces land in later phases.
-- [ ] **A.6** Copy the **settings catalog DSL** scaffold from tonearmboy per [`ui-shell.md`](ui-shell.md): `SettingsCardDsl.kt`, `SettingsCatalog.kt`, `SettingsPagesRender.kt`, `SettingsScreen.kt`, `SettingsSubPages.kt`, plus a `catalog/sections/` directory with empty stub sections. AboutScreen + LicensesScreen ship at A.7.
-- [ ] **A.7** Copy **AboutScreen.kt** and **LicensesScreen.kt** from tonearmboy. Wire LicensesScreen to the Licensee-generated `assets/licenses/artifacts.json` per [`oss-licenses.md`](oss-licenses.md).
-- [ ] **A.8** Material 3 Expressive theming entry: `LedgerboyTheme.kt` with `MaterialExpressiveTheme(...)` wiring per [`m3-expressive.md`](m3-expressive.md) — apply the five inherited gotchas before they bite.
-- [ ] **A.9** Build verification: `./gradlew assembleDebug` succeeds. APK lands at `app/build/outputs/apk/debug/ledgerboy-debug.apk`.
-- [ ] **A.10** Install verification: `android run --apks=app/build/outputs/apk/debug/ledgerboy-debug.apk` launches `LedgerboyActivity` on `emulator-5554`. Vertical rail renders with the six placeholder destinations. Settings root opens, About opens, Licenses opens and shows the auto-generated dep inventory.
+- [x] **A.0** Browse `android create list` and pick the closest official template. Default expectation: `empty-activity` (same template tonearmboy / whisperboy used).
+- [x] **A.1** `android create --name=ledgerboy --output=. <template>` from inside the repo root. Verify the generated layout: `app/`, `gradle/wrapper/`, `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`. Rename package from `com.example.ledgerboy` to `com.eight87.ledgerboy`. Rename theme to `LedgerboyTheme`. Rename activity to `LedgerboyActivity`.
+- [x] **A.2** Add baseline deps to `app/build.gradle.kts` via `libs.versions.toml`: Compose BOM (Material 3 Expressive override per [`m3-expressive.md`](m3-expressive.md)), Material Icons Extended, Lifecycle (runtime + viewmodel + compose), Activity Compose, Navigation 3, Room (runtime + ktx + KSP), DataStore Preferences, `androidx.documentfile`, `kotlinx-serialization-json`, Licensee Gradle plugin (per [`oss-licenses.md`](oss-licenses.md)).
+- [x] **A.3** `AndroidManifest.xml` adds: `INTERNET` (for banking APIs), `USE_BIOMETRIC` (for credential unlock — research-gated, declared early). No `READ_EXTERNAL_STORAGE` — SAF only. `minSdk = 28` (matching the family floor). `compileSdk = 36`, `targetSdk = 36`.
+- [x] **A.4** `.gitignore` covers Android build artifacts plus the bank-statement file extensions denied at repo root — already committed in the initial skeleton; verify the Phase-A-generated `app/.gitignore` (with `/build`) coexists cleanly with the root `.gitignore`.
+- [x] **A.5** Copy the **vertical-navigation-rail + top-bar** shell from tonearmboy per [`ui-shell.md`](ui-shell.md): `LedgerboyApp.kt`, `LedgerboyBackStack.kt`, `Destinations.kt`, `RouteScope.kt`, `RouteScopeFactory.kt`, `SectionTitle.kt`. Adapt content to ledgerboy's destinations (`Overview`, `Accounts`, `Budgets`, `Assets`, `Charts`, `Settings`). The destinations themselves are placeholder Composables in Phase A — real surfaces land in later phases.
+- [x] **A.6** Copy the **settings catalog DSL** scaffold from tonearmboy per [`ui-shell.md`](ui-shell.md): `SettingsCardDsl.kt`, `SettingsCatalog.kt`, `SettingsPagesRender.kt`, `SettingsScreen.kt`, `SettingsSubPages.kt`, plus a `catalog/sections/` directory with empty stub sections. AboutScreen + LicensesScreen ship at A.7.
+- [x] **A.7** Copy **AboutScreen.kt** and **LicensesScreen.kt** from tonearmboy. Wire LicensesScreen to the Licensee-generated `assets/licenses/artifacts.json` per [`oss-licenses.md`](oss-licenses.md).
+- [x] **A.8** Material 3 Expressive theming entry: `LedgerboyTheme.kt` with `MaterialExpressiveTheme(...)` wiring per [`m3-expressive.md`](m3-expressive.md) — apply the five inherited gotchas before they bite.
+- [x] **A.9** Build verification: `./gradlew assembleDebug` succeeds. APK lands at `app/build/outputs/apk/debug/ledgerboy-debug.apk`.
+- [x] **A.10** Install verification: `android run --apks=app/build/outputs/apk/debug/ledgerboy-debug.apk` launches `LedgerboyActivity` on `emulator-5554`. Vertical rail renders with the six placeholder destinations. Settings root opens, About opens, Licenses opens and shows the auto-generated dep inventory.
 
 ---
 

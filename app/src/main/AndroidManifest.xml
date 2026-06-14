@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- A.3 — banking / asset / FX / import connectors call out directly
+         from the device. INTERNET is auto-granted; the PluginNetworkGuard
+         (Phase X) rejects any request not originating from an Active
+         plugin, so out-of-the-box ledgerboy is silent on the wire. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- A.3 — biometric credential unlock (security-decisions.md). The
+         toggle defaults off; declared early so the keystore-gating path
+         is wired from the first ship. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
+    <!-- No READ_EXTERNAL_STORAGE / READ_MEDIA_*: import files are opened
+         via the Storage Access Framework only. -->
+
+    <application
+        android:name=".LedgerboyApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:windowSoftInputMode="adjustResize"
+        android:theme="@style/Theme.Ledgerboy">
+        <activity
+            android:name=".LedgerboyActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|locale|layoutDirection|density|uiMode">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

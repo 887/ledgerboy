@@ -1,0 +1,1 @@
+# ledgerboy proguard rules
