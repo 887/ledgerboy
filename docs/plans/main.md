@@ -169,7 +169,7 @@ _Carry-forward:_ category colours on chart slices (Phase K); regex-rule UI (engi
 
 ---
 
-## Phase H — budgets — shipped in commit __PH__
+## Phase H — budgets — shipped in commit ab9ff60
 
 **Goal:** the user can define budgets and see progress per period.
 
