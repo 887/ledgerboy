@@ -80,7 +80,7 @@ Goal: a buildable, sideload-able APK that boots into a blank Compose screen wire
 
 ---
 
-## Phase B — first connector plugin: CSV import — shipped in commit __PB__
+## Phase B — first connector plugin: CSV import — shipped in commit 618c647
 
 **Goal:** at least one `ConnectorPlugin` wired end-to-end on the Phase X runtime, fetching a transaction list and writing it into the Phase C ledger as `NormalizedTransaction` rows. First-to-ship is the **CSV import** plugin (banking-import.md priority #1: lowest setup friction, no network, no credentials, universal — works for any bank that exports a CSV), ahead of the credentialed banking connectors.
 
