@@ -285,7 +285,7 @@ Sub-steps:
 
 ---
 
-## Phase W — walk scenarios (persona-driven QA) — seed authored in commit __PW__
+## Phase W — walk scenarios (persona-driven QA) — seed authored in commit 1b5e479
 
 **Goal:** a corpus of persona-driven, replayable end-to-end QA scenarios
 — the same concept as sister app strictlykeptboy's `docs/walks/`. Each
