@@ -218,19 +218,27 @@ _Carry-forward:_ Vico-backed net-worth-over-time line + currency-exposure + asse
 
 ---
 
-## Phase L — onboarding flow
+## Phase L — onboarding flow — shipped in commit __PL__
 
-**Goal:** first launch walks the user through: pick base currency → add first account (manual or via a chosen connector) → see the empty overview. Editorial register: plain, factual, useful — no vibes copy.
+**Goal:** first launch walks the user through pick-base-currency → see the empty overview, then points at import/add-accounts. Plain, factual copy (KYIS); no account-on-our-server.
 
-Sub-steps expand once Phases B / C / E land.
+- [x] **L.1** `AppPreferences` (DataStore): base currency (default EUR) + onboarding-complete flag; interface + impl (DIP) so tests use an in-memory fake.
+- [x] **L.2** Onboarding screen: welcome + the zero-network privacy posture + base-currency chips. Plain editorial register.
+- [x] **L.3** Activity gating: first launch shows onboarding until complete (a null/loading state holds the splash-coloured frame, no flash), then the rail takes over; the choice persists.
+- [x] **L.4** Tests: `AppPreferencesTest` (defaults EUR / not-onboarded; base-currency + flag persist). 61 unit tests green overall. _Live AVD capture deferred (shared emulator busy)._
+
+_Carry-forward:_ an optional "add first account / import now" step inside onboarding.
 
 ---
 
-## Phase M — settings (full catalog)
+## Phase M — settings (full catalog) — partial; base currency + plugins shipped
 
-**Goal:** every research-decision surface lands as a settings entry — base currency, **Settings → Plugins** (the per-plugin enable/configure/state UI from Phase X.6 — this is now the canonical home for every banking / asset / FX / import / regional-index connector's credential management and per-source toggles), **Settings → Plugins → Network usage** (the audit surface from Phase X.7), import-watch folders, theming, biometric-gate toggle, sample-data toggle (for screenshots / store listings).
+**Goal:** every research-decision surface lands as a settings entry.
 
-Sub-steps expand alongside the research-round outputs.
+- [x] **M.1** Base currency — wired (Settings → Base currency shows the current code + opens a picker dialog; persisted via `AppPreferences`, shared with onboarding).
+- [x] **M.2** Settings → Plugins + Network usage — the per-plugin enable/configure/state UI + audit (shipped in Phase X.6/X.7).
+- [x] **M.3** Categories & rules entry (shipped in Phase G).
+- [ ] **M.4** Theming (dark/light + adjustable palette), biometric-gate toggle, import-watch folders, sample-data toggle. _Carry-forward — biometric ties into the security phase (SQLCipher + BiometricPrompt); theming + sample-data are independent follow-ups._
 
 ---
 

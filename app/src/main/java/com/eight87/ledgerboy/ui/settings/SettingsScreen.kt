@@ -18,10 +18,20 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.UploadFile
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import com.eight87.ledgerboy.R
 import com.eight87.ledgerboy.ui.settings.catalog.SettingsCard
 import com.eight87.ledgerboy.ui.settings.catalog.SettingsDimens
@@ -39,14 +49,22 @@ import com.eight87.ledgerboy.ui.settings.catalog.SettingsRowDivider
  * Adding a real setting later is one [SettingsRow] swapped from a
  * coming-soon subtitle to a wired `onClick`.
  */
+private val BASE_CURRENCY_OPTIONS = listOf("EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD")
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
+  appPreferences: com.eight87.ledgerboy.data.settings.AppPreferences,
   onOpenAbout: () -> Unit,
   onOpenPlugins: () -> Unit,
   onOpenCategories: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val comingSoon = stringResource(R.string.settings_coming_soon)
+  val scope = androidx.compose.runtime.rememberCoroutineScope()
+  val baseCurrency by appPreferences.baseCurrency
+    .collectAsStateWithLifecycle(initialValue = "EUR")
+  var showBaseCurrencyPicker by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
   Column(
     modifier = modifier
       .fillMaxSize()
@@ -61,7 +79,8 @@ fun SettingsScreen(
         id = "settings.base_currency",
         icon = Icons.Outlined.CurrencyExchange,
         label = stringResource(R.string.settings_base_currency),
-        subtitle = comingSoon,
+        subtitle = baseCurrency,
+        onClick = { showBaseCurrencyPicker = true },
       )
       SettingsRowDivider()
       SettingsRow(
@@ -124,5 +143,31 @@ fun SettingsScreen(
     }
 
     Spacer(Modifier.height(8.dp))
+  }
+
+  if (showBaseCurrencyPicker) {
+    AlertDialog(
+      onDismissRequest = { showBaseCurrencyPicker = false },
+      title = { Text(stringResource(R.string.settings_base_currency)) },
+      text = {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          BASE_CURRENCY_OPTIONS.forEach { code ->
+            FilterChip(
+              selected = baseCurrency == code,
+              onClick = {
+                scope.launch { appPreferences.setBaseCurrency(code) }
+                showBaseCurrencyPicker = false
+              },
+              label = { Text(code) },
+            )
+          }
+        }
+      },
+      confirmButton = {
+        TextButton(onClick = { showBaseCurrencyPicker = false }) {
+          Text(stringResource(R.string.licenses_dialog_close))
+        }
+      },
+    )
   }
 }

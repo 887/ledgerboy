@@ -116,6 +116,7 @@ fun LedgerboyApp(graph: AppGraph) {
           entry<SettingsRoot> {
             RootScaffold(R.string.dest_settings) {
               SettingsScreen(
+                appPreferences = graph.appPreferences,
                 onOpenAbout = { backStack.push(SettingsAbout) },
                 onOpenPlugins = { backStack.push(SettingsPlugins) },
                 onOpenCategories = { backStack.push(SettingsCategories) },

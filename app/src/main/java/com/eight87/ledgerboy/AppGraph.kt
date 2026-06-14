@@ -24,6 +24,7 @@ import kotlinx.coroutines.SupervisorJob
 import okhttp3.OkHttpClient
 
 private val Context.pluginDataStore: DataStore<Preferences> by preferencesDataStore(name = "plugins")
+private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 /**
  * A.5 / X — composition root. The single place that knows concrete types;
@@ -41,6 +42,10 @@ class AppGraph(
   val applicationContext: Context,
 ) {
   val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob())
+
+  // ── App preferences (Phase L/M): base currency + onboarding gate ──
+  val appPreferences: com.eight87.ledgerboy.data.settings.AppPreferences =
+    com.eight87.ledgerboy.data.settings.DataStoreAppPreferences(applicationContext.settingsDataStore)
 
   // ── Plugin runtime (Phase X) ──
   val pluginManifest = PluginManifest

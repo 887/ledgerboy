@@ -5,8 +5,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import com.eight87.ledgerboy.theme.LedgerboyTheme
 import com.eight87.ledgerboy.ui.nav.LedgerboyApp
+import com.eight87.ledgerboy.ui.onboarding.OnboardingScreen
 
 /**
  * A.5 / A.10 — single activity hosting the Compose UI. Installs the
@@ -22,7 +26,22 @@ class LedgerboyActivity : ComponentActivity() {
     val graph = (application as LedgerboyApplication).graph
     setContent {
       LedgerboyTheme {
-        LedgerboyApp(graph)
+        // null = preference not loaded yet → keep the splash-coloured frame
+        // (no flash) until we know whether to onboard.
+        val onboarded by graph.appPreferences.onboardingComplete
+          .collectAsStateWithLifecycle(initialValue = null as Boolean?)
+        when (onboarded) {
+          null -> Unit
+          false -> OnboardingScreen(
+            onFinish = { baseCurrency ->
+              graph.applicationScope.launch {
+                graph.appPreferences.setBaseCurrency(baseCurrency)
+                graph.appPreferences.setOnboardingComplete(true)
+              }
+            },
+          )
+          true -> LedgerboyApp(graph)
+        }
       }
     }
   }

@@ -100,6 +100,14 @@
     <string name="charts_income">Income</string>
     <string name="charts_expense">Expense</string>
 
+    <!-- ── Onboarding (Phase L) ── -->
+    <string name="onboarding_welcome_title">Welcome to ledgerboy</string>
+    <string name="onboarding_welcome_body">A local-first finance tracker. Your data stays on this device, and ledgerboy makes no network calls until you enable a connector yourself.</string>
+    <string name="onboarding_base_currency_title">Pick your base currency</string>
+    <string name="onboarding_base_currency_body">Net worth and totals are reported in this currency. You can change it later in Settings.</string>
+    <string name="onboarding_get_started">Get started</string>
+    <string name="onboarding_next_step">Next: import a statement from Settings → Plugins, or add accounts as you go.</string>
+
     <!-- ── Settings root ── -->
     <string name="settings_title">Settings</string>
     <string name="settings_group_general">General</string>
