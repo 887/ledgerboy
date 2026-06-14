@@ -1,5 +1,6 @@
 package com.eight87.ledgerboy.ui.accounts
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,6 +39,7 @@ import com.eight87.ledgerboy.ui.settings.catalog.SettingsRowDivider
 fun AccountsScreen(
   ledger: LedgerRepository,
   modifier: Modifier = Modifier,
+  onAccountClick: (Account) -> Unit = {},
 ) {
   val accounts by ledger.observeAccounts().collectAsStateWithLifecycle(initialValue = emptyList())
 
@@ -58,7 +60,7 @@ fun AccountsScreen(
     byInstitution.forEach { (institution, group) ->
       SettingsCard(title = institution) {
         group.forEachIndexed { index, account ->
-          AccountRow(account)
+          AccountRow(account, onClick = { onAccountClick(account) })
           if (index < group.size - 1) SettingsRowDivider()
         }
       }
@@ -68,10 +70,11 @@ fun AccountsScreen(
 }
 
 @Composable
-private fun AccountRow(account: Account) {
+private fun AccountRow(account: Account, onClick: () -> Unit) {
   Row(
     modifier = Modifier
       .fillMaxWidth()
+      .clickable(onClick = onClick)
       .padding(horizontal = SettingsDimens.RowHorizontalPadding, vertical = SettingsDimens.RowVerticalPadding),
     horizontalArrangement = Arrangement.SpaceBetween,
   ) {

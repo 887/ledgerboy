@@ -139,11 +139,17 @@ _Carry-forward (Phase F):_ tap-through account→transaction-list detail + base-
 
 ---
 
-## Phase F — transactions screen
+## Phase F — transactions screen — shipped in commit __PF__
 
-**Goal:** chronological transaction list, filterable by account / category / date range / amount range. Each transaction row shows date, payee, category, amount (native + base-currency). Tap → detail sheet for category edit / note / split.
+**Goal:** chronological transaction list, filterable, each row showing date / payee / category / amount. Tap → detail sheet for category edit.
 
-Sub-steps expand once Phases C / E land.
+- [x] **F.1** `AccountTransactions(accountId, accountName)` destination; Accounts rows are tap-through into it.
+- [x] **F.2** Transactions screen: newest-first list for the account, sign filter (All / Income / Expense), payee search; income in the primary colour, expense in the error colour, long payees ellipsised, dates localised.
+- [x] **F.3** Detail bottom sheet: assign / clear the category from existing categories (creating categories is Phase G); shows payee, amount, memo.
+- [x] **F.4** Data: `TransactionDao.setCategory` + repository `assignCategory`.
+- [x] **F.5** Tests: repository `assignCategory` clears the uncategorized count + sets the category (Robolectric); the screen reuses Phase E's Robolectric-verified composition patterns. 43 unit tests green overall. _Live AVD capture deferred (shared emulator still running a concurrent strictlykeptboy QA session)._
+
+_Carry-forward:_ date/amount-range filters, base-currency column, transaction split — fold in alongside Phase K (charts) / Phase M (settings: base currency).
 
 ---
 

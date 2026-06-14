@@ -29,6 +29,7 @@ import com.eight87.ledgerboy.ui.settings.SettingsScreen
 import com.eight87.ledgerboy.ui.settings.plugins.NetworkUsageScreen
 import com.eight87.ledgerboy.ui.settings.plugins.PluginConfigScreen
 import com.eight87.ledgerboy.ui.settings.plugins.PluginsScreen
+import com.eight87.ledgerboy.ui.transactions.TransactionsScreen
 
 /**
  * A.5 — root composable. The locked family shell: a vertical navigation
@@ -77,7 +78,13 @@ fun LedgerboyApp(graph: AppGraph) {
           }
           entry<Accounts> {
             RootScaffold(R.string.dest_accounts) {
-              AccountsScreen(ledger = graph.ledgerRepository, modifier = it)
+              AccountsScreen(
+                ledger = graph.ledgerRepository,
+                modifier = it,
+                onAccountClick = { account ->
+                  backStack.push(AccountTransactions(account.id, account.displayName))
+                },
+              )
             }
           }
           entry<Budgets> {
@@ -143,6 +150,14 @@ fun LedgerboyApp(graph: AppGraph) {
             PluginConfigScreen(
               graph = graph,
               pluginId = key.pluginId,
+              onBack = { backStack.pop() },
+            )
+          }
+          entry<AccountTransactions> { key ->
+            TransactionsScreen(
+              ledger = graph.ledgerRepository,
+              accountId = key.accountId,
+              accountName = key.accountName,
               onBack = { backStack.pop() },
             )
           }

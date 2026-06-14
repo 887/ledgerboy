@@ -35,6 +35,9 @@ interface LedgerRepository {
   suspend fun upsertAccount(account: AccountEntity)
   suspend fun upsertCategory(category: CategoryEntity)
 
+  /** F/G — assign or clear (null) a transaction's category. */
+  suspend fun assignCategory(transactionId: String, categoryId: String?)
+
   /** Cache one EUR-paired FX rate (rate scaled by 1e8). */
   suspend fun writeFxRate(base: String, quote: String, rateScaled1e8: Long, asOfEpochMillis: Long)
 
@@ -95,6 +98,9 @@ class RoomLedgerRepository(
   override suspend fun upsertAccount(account: AccountEntity) = accountDao.upsert(account)
 
   override suspend fun upsertCategory(category: CategoryEntity) = categoryDao.upsert(category)
+
+  override suspend fun assignCategory(transactionId: String, categoryId: String?) =
+    transactionDao.setCategory(transactionId, categoryId)
 
   override suspend fun writeFxRate(base: String, quote: String, rateScaled1e8: Long, asOfEpochMillis: Long) =
     fxRateDao.upsert(

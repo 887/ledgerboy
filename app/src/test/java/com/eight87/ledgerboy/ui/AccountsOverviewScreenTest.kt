@@ -37,6 +37,7 @@ class AccountsOverviewScreenTest {
     override suspend fun accountBalance(accountId: String) = Money.zero(CurrencyCode.EUR)
     override suspend fun upsertAccount(account: AccountEntity) = Unit
     override suspend fun upsertCategory(category: CategoryEntity) = Unit
+    override suspend fun assignCategory(transactionId: String, categoryId: String?) = Unit
     override suspend fun writeFxRate(base: String, quote: String, rateScaled1e8: Long, asOfEpochMillis: Long) = Unit
     override suspend fun fxRateOnOrBefore(base: String, quote: String, asOfEpochMillis: Long): Long? = null
     override suspend fun writeNormalizedTransaction(row: NormalizedTransaction) = true

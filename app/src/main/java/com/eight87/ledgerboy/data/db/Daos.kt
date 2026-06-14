@@ -101,6 +101,10 @@ interface TransactionDao {
     """,
   )
   fun observeUncategorizedCount(): Flow<Int>
+
+  /** F — assign (or clear, null) a transaction's category. */
+  @Query("UPDATE transactions SET categoryId = :categoryId WHERE id = :txnId")
+  suspend fun setCategory(txnId: String, categoryId: String?)
 }
 
 /** C.4 — category DAO. */

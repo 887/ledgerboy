@@ -26,6 +26,17 @@
     <string name="accounts_empty_title">No accounts yet</string>
     <string name="accounts_empty_body">Import a statement file from Settings → Plugins → CSV import, or enable a banking connector, to see your accounts here.</string>
 
+    <!-- ── Transactions screen (Phase F) ── -->
+    <string name="transactions_filter_all">All</string>
+    <string name="transactions_filter_income">Income</string>
+    <string name="transactions_filter_expense">Expense</string>
+    <string name="transactions_search">Search payee</string>
+    <string name="transactions_empty">No transactions match.</string>
+    <string name="transaction_uncategorized">Uncategorized</string>
+    <string name="transaction_detail_category">Category</string>
+    <string name="transaction_detail_clear_category">Clear category</string>
+    <string name="transaction_detail_no_categories">No categories yet. Add categories to organise transactions.</string>
+
     <!-- ── Overview screen (Phase E) ── -->
     <string name="overview_balances_title">Balances by currency</string>
     <string name="overview_empty_title">Nothing here yet</string>

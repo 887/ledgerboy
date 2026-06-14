@@ -91,6 +91,17 @@ class LedgerRepositoryTest {
   }
 
   @Test
+  fun `assigning a category clears the uncategorized count`() = runTest {
+    repo.writeNormalizedTransaction(txn("t1", 1050))
+    repo.upsertCategory(com.eight87.ledgerboy.data.db.CategoryEntity(id = "cat-rent", name = "Rent"))
+    assertEquals(1, repo.observeUncategorizedCount().first())
+    val txnId = db.transactionDao().byExternalId("acct-1", "t1")!!.id
+    repo.assignCategory(txnId, "cat-rent")
+    assertEquals(0, repo.observeUncategorizedCount().first())
+    assertEquals("cat-rent", repo.observeTransactions().first().first().categoryId)
+  }
+
+  @Test
   fun `fx cache returns latest rate on or before a date`() = runTest {
     repo.writeFxRate("EUR", "USD", 108_000_000L, asOfEpochMillis = 1_000L)
     repo.writeFxRate("EUR", "USD", 110_000_000L, asOfEpochMillis = 3_000L)
