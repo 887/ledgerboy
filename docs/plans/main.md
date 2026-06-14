@@ -139,7 +139,7 @@ _Carry-forward (Phase F):_ tap-through account→transaction-list detail + base-
 
 ---
 
-## Phase F — transactions screen — shipped in commit __PF__
+## Phase F — transactions screen — shipped in commit 70f94a1
 
 **Goal:** chronological transaction list, filterable, each row showing date / payee / category / amount. Tap → detail sheet for category edit.
 
