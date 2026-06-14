@@ -38,6 +38,14 @@ interface LedgerRepository {
   /** F/G — assign or clear (null) a transaction's category. */
   suspend fun assignCategory(transactionId: String, categoryId: String?)
 
+  /** G — auto-categorization rules. */
+  fun observeRules(): Flow<List<com.eight87.ledgerboy.data.db.CategoryRuleEntity>>
+  suspend fun upsertRule(rule: com.eight87.ledgerboy.data.db.CategoryRuleEntity)
+  suspend fun deleteRule(id: String)
+
+  /** Run the rules over every uncategorized current transaction; returns the number categorized. */
+  suspend fun applyRulesToUncategorized(): Int
+
   /** Cache one EUR-paired FX rate (rate scaled by 1e8). */
   suspend fun writeFxRate(base: String, quote: String, rateScaled1e8: Long, asOfEpochMillis: Long)
 
@@ -58,6 +66,7 @@ class RoomLedgerRepository(
   private val transactionDao: TransactionDao,
   private val categoryDao: CategoryDao,
   private val fxRateDao: com.eight87.ledgerboy.data.db.FxRateDao,
+  private val categoryRuleDao: com.eight87.ledgerboy.data.db.CategoryRuleDao,
   private val now: () -> Long = { System.currentTimeMillis() },
 ) : LedgerRepository {
 
@@ -102,6 +111,29 @@ class RoomLedgerRepository(
   override suspend fun assignCategory(transactionId: String, categoryId: String?) =
     transactionDao.setCategory(transactionId, categoryId)
 
+  override fun observeRules(): Flow<List<com.eight87.ledgerboy.data.db.CategoryRuleEntity>> =
+    categoryRuleDao.observeAll()
+
+  override suspend fun upsertRule(rule: com.eight87.ledgerboy.data.db.CategoryRuleEntity) =
+    categoryRuleDao.upsert(rule)
+
+  override suspend fun deleteRule(id: String) = categoryRuleDao.delete(id)
+
+  override suspend fun applyRulesToUncategorized(): Int {
+    val rules = categoryRuleDao.all()
+    if (rules.isEmpty()) return 0
+    var count = 0
+    transactionDao.currentUncategorized().forEach { txn ->
+      val categoryId = com.eight87.ledgerboy.data.category.CategoryRuleEngine
+        .categorize(txn.payee, txn.accountId, rules)
+      if (categoryId != null) {
+        transactionDao.setCategory(txn.id, categoryId)
+        count++
+      }
+    }
+    return count
+  }
+
   override suspend fun writeFxRate(base: String, quote: String, rateScaled1e8: Long, asOfEpochMillis: Long) =
     fxRateDao.upsert(
       com.eight87.ledgerboy.data.db.FxRateEntity(base, quote, rateScaled1e8, asOfEpochMillis),
@@ -134,7 +166,17 @@ class RoomLedgerRepository(
       description = row.description,
       createdAt = now(),
     )
-    return transactionDao.insertIgnoringDuplicate(entity) != -1L
+    val inserted = transactionDao.insertIgnoringDuplicate(entity) != -1L
+    if (inserted) {
+      // Auto-categorize on import (G): first matching rule wins.
+      val rules = categoryRuleDao.all()
+      if (rules.isNotEmpty()) {
+        com.eight87.ledgerboy.data.category.CategoryRuleEngine
+          .categorize(entity.payee, entity.accountId, rules)
+          ?.let { transactionDao.setCategory(entity.id, it) }
+      }
+    }
+    return inserted
   }
 
   private fun TransactionEntity.toDomain(): Transaction =

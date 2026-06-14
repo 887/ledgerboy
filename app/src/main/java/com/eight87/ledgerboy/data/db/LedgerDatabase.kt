@@ -19,8 +19,9 @@ import androidx.sqlite.execSQL
     TransactionEntity::class,
     CategoryEntity::class,
     FxRateEntity::class,
+    CategoryRuleEntity::class,
   ],
-  version = 2,
+  version = 3,
   exportSchema = true,
 )
 @TypeConverters(LedgerConverters::class)
@@ -29,6 +30,7 @@ abstract class LedgerDatabase : RoomDatabase() {
   abstract fun transactionDao(): TransactionDao
   abstract fun categoryDao(): CategoryDao
   abstract fun fxRateDao(): FxRateDao
+  abstract fun categoryRuleDao(): CategoryRuleDao
 
   companion object {
     /** D.1 — v1→v2 adds the FX rate cache (banking-fx.md). */
@@ -46,6 +48,20 @@ abstract class LedgerDatabase : RoomDatabase() {
         )
       }
     }
+
+    /** G — v2→v3 adds the auto-categorization rule table. */
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+      override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+        connection.execSQL(
+          "CREATE TABLE IF NOT EXISTS `category_rules` (" +
+            "`id` TEXT NOT NULL, `categoryId` TEXT NOT NULL, `kind` TEXT NOT NULL, " +
+            "`pattern` TEXT NOT NULL, `priority` INTEGER NOT NULL, PRIMARY KEY(`id`), " +
+            "FOREIGN KEY(`categoryId`) REFERENCES `categories`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)",
+        )
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_category_rules_categoryId` ON `category_rules` (`categoryId`)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_category_rules_priority` ON `category_rules` (`priority`)")
+      }
+    }
   }
 }
 
@@ -57,4 +73,11 @@ class LedgerConverters {
   @TypeConverter
   fun stringToAccountType(value: String): AccountType =
     runCatching { AccountType.valueOf(value) }.getOrDefault(AccountType.Other)
+
+  @TypeConverter
+  fun ruleKindToString(kind: RuleKind): String = kind.name
+
+  @TypeConverter
+  fun stringToRuleKind(value: String): RuleKind =
+    runCatching { RuleKind.valueOf(value) }.getOrDefault(RuleKind.PayeeContains)
 }

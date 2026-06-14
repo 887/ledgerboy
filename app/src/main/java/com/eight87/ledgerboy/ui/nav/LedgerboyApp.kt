@@ -21,6 +21,7 @@ import androidx.navigation3.ui.NavDisplay
 import com.eight87.ledgerboy.AppGraph
 import com.eight87.ledgerboy.R
 import com.eight87.ledgerboy.ui.accounts.AccountsScreen
+import com.eight87.ledgerboy.ui.categories.CategoriesScreen
 import com.eight87.ledgerboy.ui.overview.OverviewScreen
 import com.eight87.ledgerboy.ui.screens.PlaceholderScreen
 import com.eight87.ledgerboy.ui.settings.AboutScreen
@@ -122,6 +123,7 @@ fun LedgerboyApp(graph: AppGraph) {
               SettingsScreen(
                 onOpenAbout = { backStack.push(SettingsAbout) },
                 onOpenPlugins = { backStack.push(SettingsPlugins) },
+                onOpenCategories = { backStack.push(SettingsCategories) },
                 modifier = it,
               )
             }
@@ -160,6 +162,9 @@ fun LedgerboyApp(graph: AppGraph) {
               accountName = key.accountName,
               onBack = { backStack.pop() },
             )
+          }
+          entry<SettingsCategories> {
+            CategoriesScreen(ledger = graph.ledgerRepository, onBack = { backStack.pop() })
           }
         },
       )

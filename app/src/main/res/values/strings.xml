@@ -44,6 +44,23 @@
     <string name="overview_stat_accounts">Accounts</string>
     <string name="overview_stat_uncategorized">Uncategorized transactions</string>
 
+    <!-- ── Categories + rules (Phase G) ── -->
+    <string name="settings_categories">Categories &amp; rules</string>
+    <string name="settings_categories_sub">Organise transactions and auto-categorize on import</string>
+    <string name="categories_title">Categories &amp; rules</string>
+    <string name="categories_section_categories">Categories</string>
+    <string name="categories_section_rules">Auto-categorization rules</string>
+    <string name="categories_add_hint">New category name</string>
+    <string name="categories_add_button">Add</string>
+    <string name="categories_empty">No categories yet.</string>
+    <string name="categories_rule_hint">Payee contains…</string>
+    <string name="categories_rule_pick">Categorize as</string>
+    <string name="categories_rule_add">Add rule</string>
+    <string name="categories_no_rules">No rules yet. Add a category first, then a rule.</string>
+    <string name="categories_apply_rules">Apply rules to uncategorized</string>
+    <string name="categories_applied">Categorized %1$d transactions</string>
+    <string name="categories_rule_summary">Payee contains \"%1$s\" → %2$s</string>
+
     <!-- ── Settings root ── -->
     <string name="settings_title">Settings</string>
     <string name="settings_group_general">General</string>

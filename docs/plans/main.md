@@ -153,11 +153,19 @@ _Carry-forward:_ date/amount-range filters, base-currency column, transaction sp
 
 ---
 
-## Phase G — categories + categorization
+## Phase G — categories + categorization — shipped in commit __PG__
 
-**Goal:** the user can categorize transactions. Rules engine for auto-categorization (regex on payee, predicate on account, etc.). Uncategorized count is surfaced on the Overview.
+**Goal:** the user can categorize transactions; a rules engine auto-categorizes (payee match, per-account predicate). Uncategorized count surfaced on the Overview.
 
-Sub-steps expand once Phase F lands. Categorization rule engine is research-gated — it could be a rule sealed-type with hand-authored rules, or it could be a more elaborate predicate combinator; pick at design time.
+**Decision:** rule engine = a `RuleKind` enum + match table (`PayeeContains` / `PayeeRegex` / `AccountEquals`), evaluated in priority order, first match wins — open/closed via new enum cases, not a predicate combinator (kept simple; combinator deferred until a real need appears).
+
+- [x] **G.1** `CategoryRuleEntity` (kind + pattern + priority, FK→category, cascade delete) + `CategoryRuleDao`; Room v2→v3 `MIGRATION_2_3` + `RuleKind` converter.
+- [x] **G.2** `CategoryRuleEngine` — pure Kotlin, no Android/Room: case-insensitive payee-contains, payee-regex (invalid regex never matches), account-equals; first match in priority order wins.
+- [x] **G.3** Auto-categorize **on import**: the repository runs the rules over each newly-inserted transaction; `applyRulesToUncategorized()` back-fills existing rows. Rule CRUD on the repository.
+- [x] **G.4** Categories & rules screen (Settings → Categories & rules): add categories, add "payee contains → category" rules, delete rules, and an "Apply rules to uncategorized" action. Settings row added under Data.
+- [x] **G.5** Tests: `CategoryRuleEngineTest` (5 — each kind, priority, no-match) + repo auto-categorize-on-import + apply-to-uncategorized (2). 50 unit tests green overall. _Live AVD capture deferred (shared emulator busy)._
+
+_Carry-forward:_ category colours on chart slices (Phase K); regex-rule UI (engine already supports `PayeeRegex` / `AccountEquals` — the screen exposes payee-contains for v0).
 
 ---
 

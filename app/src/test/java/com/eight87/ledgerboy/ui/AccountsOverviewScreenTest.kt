@@ -38,6 +38,10 @@ class AccountsOverviewScreenTest {
     override suspend fun upsertAccount(account: AccountEntity) = Unit
     override suspend fun upsertCategory(category: CategoryEntity) = Unit
     override suspend fun assignCategory(transactionId: String, categoryId: String?) = Unit
+    override fun observeRules(): Flow<List<com.eight87.ledgerboy.data.db.CategoryRuleEntity>> = flowOf(emptyList())
+    override suspend fun upsertRule(rule: com.eight87.ledgerboy.data.db.CategoryRuleEntity) = Unit
+    override suspend fun deleteRule(id: String) = Unit
+    override suspend fun applyRulesToUncategorized(): Int = 0
     override suspend fun writeFxRate(base: String, quote: String, rateScaled1e8: Long, asOfEpochMillis: Long) = Unit
     override suspend fun fxRateOnOrBefore(base: String, quote: String, asOfEpochMillis: Long): Long? = null
     override suspend fun writeNormalizedTransaction(row: NormalizedTransaction) = true

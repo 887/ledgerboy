@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Article
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Info
@@ -42,6 +43,7 @@ import com.eight87.ledgerboy.ui.settings.catalog.SettingsRowDivider
 fun SettingsScreen(
   onOpenAbout: () -> Unit,
   onOpenPlugins: () -> Unit,
+  onOpenCategories: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val comingSoon = stringResource(R.string.settings_coming_soon)
@@ -88,6 +90,14 @@ fun SettingsScreen(
     }
 
     SettingsCard(title = stringResource(R.string.settings_group_data)) {
+      SettingsRow(
+        id = "settings.categories",
+        icon = Icons.Outlined.Category,
+        label = stringResource(R.string.settings_categories),
+        subtitle = stringResource(R.string.settings_categories_sub),
+        onClick = onOpenCategories,
+      )
+      SettingsRowDivider()
       SettingsRow(
         id = "settings.privacy",
         icon = Icons.Outlined.Shield,

@@ -47,6 +47,9 @@ sealed interface Destination : NavKey
 // ── Transactions (Phase F) — tap-through from an account ──
 @Serializable data class AccountTransactions(val accountId: String, val accountName: String) : Destination
 
+// ── Categories + rules (Phase G) — from Settings ──
+@Serializable data object SettingsCategories : Destination
+
 /**
  * The rail items, in display order. Each maps a top-level [Destination]
  * to its rail icon + label. Adding a destination is one entry here plus

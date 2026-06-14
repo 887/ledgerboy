@@ -105,6 +105,16 @@ interface TransactionDao {
   /** F — assign (or clear, null) a transaction's category. */
   @Query("UPDATE transactions SET categoryId = :categoryId WHERE id = :txnId")
   suspend fun setCategory(txnId: String, categoryId: String?)
+
+  /** G — current-revision transactions with no category, for the rules pass. */
+  @Query(
+    """
+    SELECT * FROM transactions t
+    WHERE t.categoryId IS NULL
+      AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.originalId = t.id)
+    """,
+  )
+  suspend fun currentUncategorized(): List<TransactionEntity>
 }
 
 /** C.4 — category DAO. */

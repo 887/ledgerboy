@@ -31,7 +31,7 @@ class LedgerRepositoryTest {
       LedgerDatabase::class.java,
     ).allowMainThreadQueries().build()
     repo = RoomLedgerRepository(
-      db.accountDao(), db.transactionDao(), db.categoryDao(), db.fxRateDao(),
+      db.accountDao(), db.transactionDao(), db.categoryDao(), db.fxRateDao(), db.categoryRuleDao(),
     ) { 1_000L }
   }
 
@@ -99,6 +99,40 @@ class LedgerRepositoryTest {
     repo.assignCategory(txnId, "cat-rent")
     assertEquals(0, repo.observeUncategorizedCount().first())
     assertEquals("cat-rent", repo.observeTransactions().first().first().categoryId)
+  }
+
+  @Test
+  fun `import auto-categorizes via a matching rule`() = runTest {
+    repo.upsertCategory(com.eight87.ledgerboy.data.db.CategoryEntity(id = "cat-rent", name = "Rent"))
+    repo.upsertRule(
+      com.eight87.ledgerboy.data.db.CategoryRuleEntity(
+        id = "r1", categoryId = "cat-rent",
+        kind = com.eight87.ledgerboy.data.db.RuleKind.PayeeContains, pattern = "Westvale",
+      ),
+    )
+    repo.writeNormalizedTransaction(
+      NormalizedTransaction("t1", 1_700_000_000_000L, -85000, "EUR", "Westvale Properties", "rent", "acct-1"),
+    )
+    assertEquals("cat-rent", repo.observeTransactions().first().first().categoryId)
+    assertEquals(0, repo.observeUncategorizedCount().first())
+  }
+
+  @Test
+  fun `apply rules to uncategorized categorizes existing rows`() = runTest {
+    // Import first (no rules yet → uncategorized).
+    repo.writeNormalizedTransaction(
+      NormalizedTransaction("t1", 1_700_000_000_000L, -4200, "EUR", "ARAL Station", "fuel", "acct-1"),
+    )
+    assertEquals(1, repo.observeUncategorizedCount().first())
+    repo.upsertCategory(com.eight87.ledgerboy.data.db.CategoryEntity(id = "cat-fuel", name = "Fuel"))
+    repo.upsertRule(
+      com.eight87.ledgerboy.data.db.CategoryRuleEntity(
+        id = "r1", categoryId = "cat-fuel",
+        kind = com.eight87.ledgerboy.data.db.RuleKind.PayeeContains, pattern = "ARAL",
+      ),
+    )
+    assertEquals(1, repo.applyRulesToUncategorized())
+    assertEquals(0, repo.observeUncategorizedCount().first())
   }
 
   @Test
