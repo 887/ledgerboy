@@ -127,7 +127,7 @@ Goal: a buildable, sideload-able APK that boots into a blank Compose screen wire
 
 ---
 
-## Phase E — accounts + overview screens — shipped in commit __PE__
+## Phase E — accounts + overview screens — shipped in commit dca21d3
 
 **Goal:** lists every account across every bank, grouped by institution, with current balance per account (native currency); the Overview surfaces balances + activity. Tap into an account → transaction list (the tap-through detail is Phase F).
 
