@@ -28,6 +28,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -98,7 +100,12 @@ fun ChartsScreen(
           )
         } else {
           val colors = slices.map { accentFor(it.categoryId ?: it.label).container }
-          Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) {
+          val donutCd = slices.joinToString(", ") { "${it.label} ${Money(it.amountMinor, CurrencyCode.EUR).format()}" }
+          Box(
+            Modifier.fillMaxWidth().height(180.dp)
+              .semantics { contentDescription = donutCd },
+            contentAlignment = Alignment.Center,
+          ) {
             DonutChart(values = slices.map { it.amountMinor }, colors = colors, modifier = Modifier.size(160.dp))
           }
           Spacer(Modifier.height(12.dp))
@@ -116,12 +123,15 @@ fun ChartsScreen(
 
     SettingsCard(title = stringResource(R.string.charts_cashflow_title)) {
       Column(Modifier.padding(16.dp)) {
+        val barsCd = cashflow.joinToString(", ") {
+          "${it.label}: +${Money(it.incomeMinor, CurrencyCode.EUR).format()} −${Money(it.expenseMinor, CurrencyCode.EUR).format()}"
+        }
         CashflowBars(
           cashflow = cashflow,
           incomeColor = MaterialTheme.colorScheme.primary,
           expenseColor = MaterialTheme.colorScheme.error,
           axisColor = MaterialTheme.colorScheme.outlineVariant,
-          modifier = Modifier.fillMaxWidth().height(180.dp),
+          modifier = Modifier.fillMaxWidth().height(180.dp).semantics { contentDescription = barsCd },
         )
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.Center) {
           LegendDot(MaterialTheme.colorScheme.primary, stringResource(R.string.charts_income))

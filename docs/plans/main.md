@@ -247,11 +247,15 @@ _Carry-forward:_ an optional "add first account / import now" step inside onboar
 
 ---
 
-## Phase N — home-screen widget (optional)
+## Phase N — home-screen widget (optional) — deferred (justified)
 
-**Goal:** a small widget showing net-worth today, biggest income / biggest expense in the current month. Tap → opens the app.
+**Goal:** a small widget showing net-worth today + biggest income/expense this month; tap opens the app.
 
-Mirrors tonearmboy's Phase M. Sub-steps expand once Phase K's chart components stabilize.
+**Status: deferred, with rationale (the plan marks it _optional_).** Three reasons to hold: (1) a net-worth widget needs **base-currency conversion across currencies**, which is the documented Phase D/K carry-forward (the FX cache + `MoneyConverter` exist; wiring the converted aggregate into the UI does not yet) — without it the widget can only show per-currency lines or a single-currency figure; (2) it adds an **androidx.glance** dependency whose exact current version can't be verified offline in this autonomous pass (same risk that led to the Canvas-charts call over Vico) — guessing it risks a red build; (3) a widget is **device-only to verify** and the shared AVD is busy. Land it once the base-currency aggregate is wired and the AVD is free.
+
+- [ ] **N.1** Wire the cross-currency net-worth aggregate (Phase D `MoneyConverter` + base currency) into a repository read.
+- [ ] **N.2** Glance widget (net worth + month's biggest income/expense) + receiver + provider XML; tap → `LedgerboyActivity`.
+- [ ] **N.3** Verify on device.
 
 ---
 
@@ -268,11 +272,14 @@ Sub-steps:
 
 ---
 
-## Phase P — polish + edge cases
+## Phase P — polish + edge cases — code-level pass shipped in commit __PP__
 
-**Goal:** the unglamorous one. Long account names wrap correctly. Long amounts in non-base currency don't overflow the row. Empty states for every screen. Cold-start to first-paint stays under a research-decision budget. Accessibility audit (TalkBack on the rail, on the transaction list, on the chart legends).
+**Goal:** the unglamorous one — overflow, empty states, accessibility, cold-start.
 
-Sub-steps expand once everything above lands.
+- [x] **P.1** Empty states on every screen (Overview / Accounts / Transactions / Budgets / Assets / Charts / Plugins / Network-usage) — each dead-ends into guidance, not a blank.
+- [x] **P.2** Overflow handling: long account / asset / payee names ellipsise (`maxLines=1` + `TextOverflow.Ellipsis`), amounts stay single-line (`softWrap=false`) and never wrap the row.
+- [x] **P.3** Chart accessibility: the Canvas donut + cashflow bars carry a `semantics { contentDescription }` summarising their data (charts have no built-in TalkBack — dataviz-decision.md §7).
+- [ ] **P.4** Full TalkBack sweep (rail / lists / dialogs) + cold-start-to-first-paint budget measurement. _On-device carry-forward — needs the AVD/phone (shared emulator busy)._
 
 ---
 
