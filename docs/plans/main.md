@@ -281,7 +281,7 @@ Sub-steps expand once Phase L's onboarding strings stabilize.
 
 ---
 
-## Phase R — easter egg — shipped in commit __PR__
+## Phase R — easter egg — shipped in commit c5525c7
 
 **Goal:** triple-tap on the launcher icon in About / Settings unlocks a small easter egg. Same shape as tonearmboy. Icon + easter egg image to be provided by the user later — leave a placeholder slot.
 
