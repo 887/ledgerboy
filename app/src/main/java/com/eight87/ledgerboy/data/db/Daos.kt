@@ -7,6 +7,12 @@ import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
+/** Account row joined with its current-revision balance (minor units). */
+data class AccountWithBalance(
+  @androidx.room.Embedded val account: AccountEntity,
+  val balanceMinor: Long,
+)
+
 /** C.4 — account DAO. */
 @Dao
 interface AccountDao {
@@ -15,6 +21,20 @@ interface AccountDao {
 
   @Query("SELECT * FROM accounts ORDER BY displayOrder, institution, displayName")
   fun observeAll(): Flow<List<AccountEntity>>
+
+  /** E.1 — accounts with their live balance (sum of current-revision txns). */
+  @Query(
+    """
+    SELECT a.*, COALESCE((
+      SELECT SUM(t.amountMinor) FROM transactions t
+      WHERE t.accountId = a.id
+        AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.originalId = t.id)
+    ), 0) AS balanceMinor
+    FROM accounts a
+    ORDER BY a.institution, a.displayName
+    """,
+  )
+  fun observeAccountsWithBalance(): Flow<List<AccountWithBalance>>
 
   @Query("SELECT * FROM accounts WHERE id = :id")
   suspend fun byId(id: String): AccountEntity?

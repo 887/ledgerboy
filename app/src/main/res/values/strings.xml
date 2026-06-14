@@ -22,6 +22,17 @@
     <string name="placeholder_assets">Real estate, vehicles, securities, and collectibles land here.</string>
     <string name="placeholder_charts">Net-worth-over-time, cashflow, and allocation charts land here.</string>
 
+    <!-- ── Accounts screen (Phase E) ── -->
+    <string name="accounts_empty_title">No accounts yet</string>
+    <string name="accounts_empty_body">Import a statement file from Settings → Plugins → CSV import, or enable a banking connector, to see your accounts here.</string>
+
+    <!-- ── Overview screen (Phase E) ── -->
+    <string name="overview_balances_title">Balances by currency</string>
+    <string name="overview_empty_title">Nothing here yet</string>
+    <string name="overview_empty_body">Once you import transactions, your balances and activity appear here.</string>
+    <string name="overview_stat_accounts">Accounts</string>
+    <string name="overview_stat_uncategorized">Uncategorized transactions</string>
+
     <!-- ── Settings root ── -->
     <string name="settings_title">Settings</string>
     <string name="settings_group_general">General</string>

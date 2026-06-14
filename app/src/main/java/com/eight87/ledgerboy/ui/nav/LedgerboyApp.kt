@@ -20,6 +20,8 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.eight87.ledgerboy.AppGraph
 import com.eight87.ledgerboy.R
+import com.eight87.ledgerboy.ui.accounts.AccountsScreen
+import com.eight87.ledgerboy.ui.overview.OverviewScreen
 import com.eight87.ledgerboy.ui.screens.PlaceholderScreen
 import com.eight87.ledgerboy.ui.settings.AboutScreen
 import com.eight87.ledgerboy.ui.settings.LicensesScreen
@@ -70,22 +72,12 @@ fun LedgerboyApp(graph: AppGraph) {
         entryProvider = entryProvider {
           entry<Overview> {
             RootScaffold(R.string.dest_overview) {
-              PlaceholderScreen(
-                icon = RailItem.OVERVIEW.icon,
-                title = stringResource(R.string.dest_overview),
-                description = stringResource(R.string.placeholder_overview),
-                modifier = it,
-              )
+              OverviewScreen(ledger = graph.ledgerRepository, modifier = it)
             }
           }
           entry<Accounts> {
             RootScaffold(R.string.dest_accounts) {
-              PlaceholderScreen(
-                icon = RailItem.ACCOUNTS.icon,
-                title = stringResource(R.string.dest_accounts),
-                description = stringResource(R.string.placeholder_accounts),
-                modifier = it,
-              )
+              AccountsScreen(ledger = graph.ledgerRepository, modifier = it)
             }
           }
           entry<Budgets> {

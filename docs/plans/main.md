@@ -127,11 +127,15 @@ Goal: a buildable, sideload-able APK that boots into a blank Compose screen wire
 
 ---
 
-## Phase E — accounts screen
+## Phase E — accounts + overview screens — shipped in commit __PE__
 
-**Goal:** lists every account across every bank, grouped by bank, with current balance per account (in native currency) and a per-bank subtotal (in base currency). Tap into an account → transaction list.
+**Goal:** lists every account across every bank, grouped by institution, with current balance per account (native currency); the Overview surfaces balances + activity. Tap into an account → transaction list (the tap-through detail is Phase F).
 
-Lands on top of the tonearmboy UI shell from [`ui-shell.md`](ui-shell.md). Sub-steps expand once Phases B–D's data shape is locked.
+- [x] **E.1** Accounts screen: live per-account balances via an `AccountWithBalance` DAO projection (sum of current-revision transactions), grouped by institution, negative balances in the error colour, long names ellipsised. Empty state points to CSV import / connectors. Wired into the rail.
+- [x] **E.2** Overview screen: balances summed **per currency** (no cross-currency net-worth without FX rates — never a wrong number; the converted total arrives once the ECB plugin is enabled), plus account count + uncategorized count. Replaces the Overview placeholder.
+- [x] **E.3** Tests: Robolectric Compose screen tests (3 — accounts list shows name+balance, accounts empty state, overview per-currency + uncategorized count) against a fake repository. 42 unit tests green overall. _Live AVD capture deferred: the shared `medium_phone` is being driven by a concurrent strictlykeptboy QA session; screens are Robolectric-verified and land for on-device capture when it frees._
+
+_Carry-forward (Phase F):_ tap-through account→transaction-list detail + base-currency per-bank subtotal once a base currency is chosen (Phase M) and FX rates are cached (Phase D plugin enabled).
 
 ---
 

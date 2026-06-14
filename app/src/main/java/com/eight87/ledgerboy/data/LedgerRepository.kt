@@ -59,21 +59,18 @@ class RoomLedgerRepository(
 ) : LedgerRepository {
 
   override fun observeAccounts(): Flow<List<Account>> =
-    accountDao.observeAll().map { list -> list.map { it.toDomainWithBalance() } }
-
-  // Note: balance is computed per-account via a suspend query; for the
-  // list we map synchronously off the stored fields and let callers ask
-  // accountBalance() where the live sum matters. To keep the list cheap
-  // and correct, balance here is recomputed lazily by the caller.
-  private fun AccountEntity.toDomainWithBalance(): Account =
-    Account(
-      id = id,
-      displayName = displayName,
-      institution = institution,
-      type = type,
-      hiddenFromNetWorth = hiddenFromNetWorth,
-      balance = Money.zero(CurrencyCode(currency)),
-    )
+    accountDao.observeAccountsWithBalance().map { list ->
+      list.map { row ->
+        Account(
+          id = row.account.id,
+          displayName = row.account.displayName,
+          institution = row.account.institution,
+          type = row.account.type,
+          hiddenFromNetWorth = row.account.hiddenFromNetWorth,
+          balance = Money(row.balanceMinor, CurrencyCode(row.account.currency)),
+        )
+      }
+    }
 
   override fun observeTransactions(): Flow<List<Transaction>> =
     transactionDao.observeCurrent().map { list -> list.map { it.toDomain() } }
