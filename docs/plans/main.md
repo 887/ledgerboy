@@ -64,7 +64,7 @@ Goal: a buildable, sideload-able APK that boots into a blank Compose screen wire
 
 ---
 
-## Phase X — connector plugin runtime — shipped in commit __PX__
+## Phase X — connector plugin runtime — shipped in commit d06dcb9
 
 **Goal:** the host-side scaffolding every connector plugin builds on. Lands before any individual connector plugin so that Phase B+ are each just "implement `ConnectorPlugin` for one source." Locked architecture in [`connector-plugins.md`](connector-plugins.md).
 
