@@ -113,7 +113,7 @@ Goal: a buildable, sideload-able APK that boots into a blank Compose screen wire
 
 ---
 
-## Phase D — multi-currency + FX rate cache — shipped in commit __PD__
+## Phase D — multi-currency + FX rate cache — shipped in commit 01ad9d4
 
 **Goal:** every `Money` round-trips through the FX cache when displayed in the user's base currency. FX rates fetched by whichever FX plugin(s) the user enables (ECB-direct shipped; Bundesbank-direct next — both off by default). Base-currency conversion is a `MoneyConverter`; the stored amount stays in the transaction's native currency. No FX plugin enabled → manual / per-transaction rates (intrinsic, no plugin).
 
