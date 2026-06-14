@@ -88,7 +88,7 @@ Goal: a buildable, sideload-able APK that boots into a blank Compose screen wire
 
 ---
 
-## Phase C — ledger schema + transaction store — shipped in commit __PC__
+## Phase C — ledger schema + transaction store — shipped in commit 57f634f
 
 **Goal:** Room schema for `AccountEntity`, `TransactionEntity`, `CategoryEntity`, and the join tables. `Money` value class implemented (integer minor units, currency-aware). Transactions are write-once-ish — edits land as new revisions with an `originalId` pointer.
 
