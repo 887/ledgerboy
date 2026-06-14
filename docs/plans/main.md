@@ -218,7 +218,7 @@ _Carry-forward:_ Vico-backed net-worth-over-time line + currency-exposure + asse
 
 ---
 
-## Phase L — onboarding flow — shipped in commit __PL__
+## Phase L — onboarding flow — shipped in commit 45755be
 
 **Goal:** first launch walks the user through pick-base-currency → see the empty overview, then points at import/add-accounts. Plain, factual copy (KYIS); no account-on-our-server.
 
