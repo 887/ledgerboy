@@ -185,7 +185,7 @@ _Carry-forward:_ envelope + rolling shapes; per-budget custom period; budget ale
 
 ---
 
-## Phase I — asset registry — shipped in commit __PI__
+## Phase I — asset registry — shipped in commit 7f8d97c
 
 **Goal:** add an asset (real estate / vehicle / security / crypto / collectible / generic) with an acquisition cost and a `ValuationEvent` history (date + value + source). Manual revaluation lands a `source="manual"` event; per-class connectors (Phase J) land `source="<connector>"` events.
 
