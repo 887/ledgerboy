@@ -198,7 +198,7 @@ _Phase J unblocked:_ asset-price connectors (`ConnectorPlugin` in `AssetPrice` /
 
 ---
 
-## Phase J — asset valuation connector plugins — first connector shipped in commit __PJ__
+## Phase J — asset valuation connector plugins — first connector shipped in commit 50b8443
 
 **Goal:** per asset class, a `ConnectorPlugin` (in `AssetPrice` / `RegionalIndex`) that fetches a price or surfaces a regional-index hint, emitting `ValuationEventRow`s into the Phase I valuation history. All disabled by default; plugins land one at a time on the Phase X runtime, per [`asset-research.md`](asset-research.md).
 
