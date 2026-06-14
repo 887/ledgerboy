@@ -4,7 +4,9 @@ Modern Android personal-finance / budget / multi-asset tracker. Built on Jetpack
 
 ## Status
 
-🟡 PRE-PHASE 0. Repo skeleton + research prompts only. See [`docs/plans/main.md`](docs/plans/main.md) for the phased build plan and [`docs/plans/seed-prompt.md`](docs/plans/seed-prompt.md) for the original brief. The detailed Phase B+ work is gated on banking / asset / dataviz / security research rounds — see the per-area `docs/plans/*-research.md` files.
+🟢 Working app. Import a CSV statement (local, no login) → see accounts grouped by bank with balances → drill into transactions and assign categories → auto-categorize future imports by rule → set monthly budgets → track assets (real estate / vehicles / crypto / collectibles) with valuation history → view spending + cashflow charts. Multi-currency throughout; exchange rates come directly from the ECB when you enable that plugin. Out of the box ledgerboy makes **zero network calls** — every connector is disabled by default and the in-app Network-usage screen audits exactly what (if anything) has called out.
+
+64 unit tests green. Build with `./gradlew :app:assembleDebug` (or `scripts/build-release-apk.sh`). See [`docs/plans/main.md`](docs/plans/main.md) for the phased build status and [`docs/walks/`](docs/walks/) for persona-driven QA scenarios.
 
 ## Goals
 
