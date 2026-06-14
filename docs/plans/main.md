@@ -242,14 +242,14 @@ Mirrors tonearmboy's Phase M. Sub-steps expand once Phase K's chart components s
 
 ---
 
-## Phase O — release / Obtainium / GitHub Actions
+## Phase O — release / Obtainium / GitHub Actions — script+workflow shipped in commit __PO__
 
 **Goal:** `scripts/build-release-apk.sh --gh-release` ships a signed APK to a GitHub Release that Obtainium auto-detects. Same pipeline as tonearmboy / whisperboy / shutterboy — copy and adapt.
 
 Sub-steps:
 
-- [ ] **O.1** Copy `scripts/build-release-apk.sh` from whisperboy; rename `whisperboy` → `ledgerboy` everywhere.
-- [ ] **O.2** Copy `.github/workflows/release.yml` (tag-only, self-disabling) from whisperboy; rename.
+- [x] **O.1** Copy `scripts/build-release-apk.sh` from whisperboy; rename `whisperboy` → `ledgerboy` everywhere.
+- [x] **O.2** Copy `.github/workflows/release.yml` (tag-only, self-disabling) from whisperboy; rename.
 - [ ] **O.3** First release ships: `scripts/build-release-apk.sh --gh-release` produces `ledgerboy-<version>-<sha7>.apk` on the releases page.
 - [ ] **O.4** Obtainium pickup verified end-to-end against the source URL in the README.
 
