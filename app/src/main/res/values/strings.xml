@@ -91,6 +91,15 @@
     <string name="asset_detail_no_history">No valuations yet. Record one to start the history.</string>
     <string name="asset_valuation_source_manual">manual</string>
 
+    <!-- ── Charts screen (Phase K) ── -->
+    <string name="charts_empty_title">No data to chart yet</string>
+    <string name="charts_empty_body">Import transactions to see spending and cashflow here.</string>
+    <string name="charts_spending_title">Spending this month</string>
+    <string name="charts_spending_empty">No spending recorded this month.</string>
+    <string name="charts_cashflow_title">Cashflow (6 months)</string>
+    <string name="charts_income">Income</string>
+    <string name="charts_expense">Expense</string>
+
     <!-- ── Settings root ── -->
     <string name="settings_title">Settings</string>
     <string name="settings_group_general">General</string>

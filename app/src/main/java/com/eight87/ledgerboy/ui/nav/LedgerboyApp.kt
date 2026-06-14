@@ -25,6 +25,7 @@ import com.eight87.ledgerboy.ui.assets.AssetDetailScreen
 import com.eight87.ledgerboy.ui.assets.AssetsScreen
 import com.eight87.ledgerboy.ui.budgets.BudgetsScreen
 import com.eight87.ledgerboy.ui.categories.CategoriesScreen
+import com.eight87.ledgerboy.ui.charts.ChartsScreen
 import com.eight87.ledgerboy.ui.overview.OverviewScreen
 import com.eight87.ledgerboy.ui.screens.PlaceholderScreen
 import com.eight87.ledgerboy.ui.settings.AboutScreen
@@ -109,12 +110,7 @@ fun LedgerboyApp(graph: AppGraph) {
           }
           entry<Charts> {
             RootScaffold(R.string.dest_charts) {
-              PlaceholderScreen(
-                icon = RailItem.CHARTS.icon,
-                title = stringResource(R.string.dest_charts),
-                description = stringResource(R.string.placeholder_charts),
-                modifier = it,
-              )
+              ChartsScreen(ledger = graph.ledgerRepository, modifier = it)
             }
           }
           entry<SettingsRoot> {

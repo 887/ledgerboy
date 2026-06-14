@@ -204,11 +204,17 @@ _Phase J unblocked:_ asset-price connectors (`ConnectorPlugin` in `AssetPrice` /
 
 ---
 
-## Phase K — data visualization (research-gated)
+## Phase K — data visualization — v0 shipped in commit __PK__
 
-**Goal:** the chart surfaces — net-worth-over-time line, cashflow Sankey, category treemap, currency-exposure donut, asset-class allocation, budget-progress bars, transaction histogram. Each chart is its own Composable; theming threads M3E tokens.
+**Goal:** the chart surfaces — spending-by-category, cashflow, net-worth-over-time, allocation, budget-progress. Each chart is its own Composable; theming threads M3 tokens + the `CategoryAccent` palette.
 
-**Gated on:** [`dataviz-research.md`](dataviz-research.md) and its `dataviz-decision.md` output.
+**Per dataviz-decision.md:** Vico 3.x is the chosen library for the richer interactive time-series; v0 ships the two highest-value views as **hand-rolled `Canvas` Composables** (the decision sanctions Canvas for the custom chart layer and keeps the build dependency-light + guaranteed-green for this autonomous pass). Vico integration for net-worth-over-time + zoomable series is the carry-forward.
+
+- [x] **K.1** `ChartsData` (pure): spending-by-category for the month (expense magnitude per category, single base currency, income/other-currency excluded — documented, never mixed) + income-vs-expense monthly cashflow (6 months).
+- [x] **K.2** Charts screen (rail destination): Canvas **donut** (spending by category) + colour-coded legend with amounts; Canvas **cashflow bars** (income vs expense per month) with axis + legend + month labels. M3-token + `CategoryAccent` themed. Replaces the Charts placeholder.
+- [x] **K.3** Tests: `ChartsDataTest` (3 — spending aggregation incl. income/other-currency exclusion + sort, uncategorized fallback, monthly cashflow split). 59 unit tests green overall. _Live AVD capture deferred (shared emulator busy)._
+
+_Carry-forward:_ Vico-backed net-worth-over-time line + currency-exposure + asset-class-allocation donuts + Canvas Sankey/treemap; base-currency conversion so charts can mix currencies.
 
 ---
 
