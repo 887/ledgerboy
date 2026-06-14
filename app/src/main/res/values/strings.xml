@@ -195,6 +195,13 @@
     <string name="ecb_fx_privacy">A small public rates file is downloaded directly from ecb.europa.eu. No account data leaves your device — only the request for the published rates.</string>
     <string name="ecb_fx_config_note">No configuration needed. Test connection fetches today\'s published rates from the ECB.</string>
 
+    <!-- ── Coinbase crypto price plugin (Phase J) ── -->
+    <string name="coinbase_name">Coinbase crypto price</string>
+    <string name="coinbase_desc">Fetch a crypto spot price directly from Coinbase to revalue one of your assets.</string>
+    <string name="coinbase_privacy">A public price request goes directly to api.coinbase.com for the pair you choose. No account data and no API key leave your device.</string>
+    <string name="coinbase_asset_hint">Asset id to revalue</string>
+    <string name="coinbase_pair_hint">Pair (e.g. BTC-EUR)</string>
+
     <!-- ── Licenses screen ── -->
     <string name="licenses_screen_title">Open-source licenses</string>
     <string name="licenses_empty">License inventory is generated at build time and was not found in this build.</string>

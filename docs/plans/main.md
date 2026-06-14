@@ -198,9 +198,14 @@ _Phase J unblocked:_ asset-price connectors (`ConnectorPlugin` in `AssetPrice` /
 
 ---
 
-## Phase J — asset valuation connector plugins (research-gated)
+## Phase J — asset valuation connector plugins — first connector shipped in commit __PJ__
 
-**Goal:** per asset class, a `ConnectorPlugin` (in the `AssetPrice` or `RegionalIndex` category) that either fetches a current price (securities via per-broker plugins, crypto via per-exchange or on-chain RPC plugins, collectibles via Scryfall / pokemontcg.io / YGOPRODeck) or surfaces a regional-index hint at the manual revaluation moment (real estate via Häuserpreisindex / BORIS / UK HPI / FHFA HPI). All plugins ship disabled by default. Plugins land one at a time on top of the Phase X runtime, gated on per-class decision docs from [`asset-research.md`](asset-research.md) and the per-class `asset-*.md` files.
+**Goal:** per asset class, a `ConnectorPlugin` (in `AssetPrice` / `RegionalIndex`) that fetches a price or surfaces a regional-index hint, emitting `ValuationEventRow`s into the Phase I valuation history. All disabled by default; plugins land one at a time on the Phase X runtime, per [`asset-research.md`](asset-research.md).
+
+- [x] **J.1** First asset-price connector: `coinbase-crypto` (AssetPrice category) — fetches a crypto spot price **directly** from Coinbase's keyless public endpoint (direct exchange, no aggregator) through the guarded client, parses it without float, and emits a `ValuationEventRow` into the chosen asset's history. Registered in the manifest. Proves the AssetPrice → valuation path end-to-end.
+- [x] **J.2** Tests: `CoinbasePriceParserTest` (amount→minor, quote-currency fraction digits, garbage→null). 64 unit tests green overall. _Live AVD capture deferred (shared emulator busy)._
+
+_Carry-forward (one plugin at a time, same shape):_ per-broker securities (IBKR/Trade Republic/Comdirect), on-chain RPC (user node URL), collectibles (Scryfall / pokemontcg.io / YGOPRODeck), regional house-price indexes (Häuserpreisindex / BORIS / UK HPI / FHFA HPI); plus an asset-aware ConfigScreen picker (v0 takes a free-text asset id).
 
 ---
 
