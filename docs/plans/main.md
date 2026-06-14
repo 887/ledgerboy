@@ -1,8 +1,8 @@
 # ledgerboy — main build plan
 
-## Status: 🟢 BUILDING — Phases 0 / A / X / C / B shipped; Phase D (FX) next
+## Status: 🟢 BUILDING — Phases 0 / A / X / C / B / D shipped; Phase E (accounts) next
 
-_Shipped + verified on 2026-06-14 (30 unit tests green): Phase 0 (host), Phase A (scaffold + UI shell), Phase X (connector plugin runtime), Phase C (ledger schema + Money + transaction store), Phase B (CSV import — first connector). Next: Phase D (FX cache + MoneyConverter + ECB-direct FX plugin — exercises the network guard with a real Active plugin), then the screen phases E (accounts) / F (transactions) to surface the ledger data, then G+ onward._
+_Shipped + verified on 2026-06-14 (39 unit tests green): Phase 0 (host), Phase A (scaffold + UI shell), Phase X (connector plugin runtime), Phase C (ledger schema + Money + transaction store), Phase B (CSV import connector), Phase D (multi-currency FX cache + MoneyConverter + ECB-direct FX plugin). The data + connector + FX foundations are in place; next are the screen phases E (accounts) / F (transactions) / Overview to surface the ledger, then G (categories) onward. UI-screen phases need live AVD verification — currently the shared `medium_phone` AVD is being driven by another session, so those land when it frees._
 
 ## Stack (locked)
 
