@@ -242,7 +242,7 @@ Mirrors tonearmboy's Phase M. Sub-steps expand once Phase K's chart components s
 
 ---
 
-## Phase O — release / Obtainium / GitHub Actions — script+workflow shipped in commit __PO__
+## Phase O — release / Obtainium / GitHub Actions — script+workflow shipped in commit 0e024aa
 
 **Goal:** `scripts/build-release-apk.sh --gh-release` ships a signed APK to a GitHub Release that Obtainium auto-detects. Same pipeline as tonearmboy / whisperboy / shutterboy — copy and adapt.
 
