@@ -204,7 +204,7 @@ _Phase J unblocked:_ asset-price connectors (`ConnectorPlugin` in `AssetPrice` /
 
 ---
 
-## Phase K — data visualization — v0 shipped in commit __PK__
+## Phase K — data visualization — v0 shipped in commit 0b3dac7
 
 **Goal:** the chart surfaces — spending-by-category, cashflow, net-worth-over-time, allocation, budget-progress. Each chart is its own Composable; theming threads M3 tokens + the `CategoryAccent` palette.
 
