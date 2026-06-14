@@ -30,7 +30,9 @@ class LedgerRepositoryTest {
       ApplicationProvider.getApplicationContext(),
       LedgerDatabase::class.java,
     ).allowMainThreadQueries().build()
-    repo = RoomLedgerRepository(db.accountDao(), db.transactionDao(), db.categoryDao()) { 1_000L }
+    repo = RoomLedgerRepository(
+      db.accountDao(), db.transactionDao(), db.categoryDao(), db.fxRateDao(),
+    ) { 1_000L }
   }
 
   @After fun tearDown() = db.close()
@@ -86,5 +88,17 @@ class LedgerRepositoryTest {
     repo.writeNormalizedTransaction(txn("t1", 1050))
     repo.writeNormalizedTransaction(txn("t2", 2000))
     assertEquals(2, repo.observeUncategorizedCount().first())
+  }
+
+  @Test
+  fun `fx cache returns latest rate on or before a date`() = runTest {
+    repo.writeFxRate("EUR", "USD", 108_000_000L, asOfEpochMillis = 1_000L)
+    repo.writeFxRate("EUR", "USD", 110_000_000L, asOfEpochMillis = 3_000L)
+    // Before the first rate → null.
+    assertEquals(null, repo.fxRateOnOrBefore("EUR", "USD", 500L))
+    // Between the two → the earlier rate.
+    assertEquals(108_000_000L, repo.fxRateOnOrBefore("EUR", "USD", 2_000L))
+    // On-or-after the second → the later rate.
+    assertEquals(110_000_000L, repo.fxRateOnOrBefore("EUR", "USD", 5_000L))
   }
 }

@@ -35,6 +35,12 @@ interface LedgerRepository {
   suspend fun upsertAccount(account: AccountEntity)
   suspend fun upsertCategory(category: CategoryEntity)
 
+  /** Cache one EUR-paired FX rate (rate scaled by 1e8). */
+  suspend fun writeFxRate(base: String, quote: String, rateScaled1e8: Long, asOfEpochMillis: Long)
+
+  /** Latest cached [base]→[quote] rate (scaled 1e8) on-or-before [asOfEpochMillis]; null if none. */
+  suspend fun fxRateOnOrBefore(base: String, quote: String, asOfEpochMillis: Long): Long?
+
   /**
    * Write a connector-emitted transaction, de-duplicated on
    * (accountRef, externalId). Auto-creates a minimal account row if the
@@ -48,6 +54,7 @@ class RoomLedgerRepository(
   private val accountDao: AccountDao,
   private val transactionDao: TransactionDao,
   private val categoryDao: CategoryDao,
+  private val fxRateDao: com.eight87.ledgerboy.data.db.FxRateDao,
   private val now: () -> Long = { System.currentTimeMillis() },
 ) : LedgerRepository {
 
@@ -91,6 +98,14 @@ class RoomLedgerRepository(
   override suspend fun upsertAccount(account: AccountEntity) = accountDao.upsert(account)
 
   override suspend fun upsertCategory(category: CategoryEntity) = categoryDao.upsert(category)
+
+  override suspend fun writeFxRate(base: String, quote: String, rateScaled1e8: Long, asOfEpochMillis: Long) =
+    fxRateDao.upsert(
+      com.eight87.ledgerboy.data.db.FxRateEntity(base, quote, rateScaled1e8, asOfEpochMillis),
+    )
+
+  override suspend fun fxRateOnOrBefore(base: String, quote: String, asOfEpochMillis: Long): Long? =
+    fxRateDao.rateOnOrBefore(base, quote, asOfEpochMillis)
 
   override suspend fun writeNormalizedTransaction(row: NormalizedTransaction): Boolean {
     // Auto-create a minimal account if this is the first time we've seen it.

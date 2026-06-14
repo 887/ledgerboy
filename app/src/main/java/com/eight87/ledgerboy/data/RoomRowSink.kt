@@ -18,7 +18,7 @@ class RoomRowSink(
   override suspend fun write(row: NormalizedRow) {
     when (row) {
       is NormalizedTransaction -> ledger.writeNormalizedTransaction(row)
-      is FxRateRow -> Unit // Phase D — FX cache sink
+      is FxRateRow -> ledger.writeFxRate(row.baseCurrency, row.quoteCurrency, row.rateScaled1e8, row.asOfEpochMillis)
       is ValuationEventRow -> Unit // Phase I/J — valuation history sink
     }
   }

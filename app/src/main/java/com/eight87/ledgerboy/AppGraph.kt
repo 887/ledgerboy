@@ -61,12 +61,14 @@ class AppGraph(
   // ── Ledger (Phase C) ──
   val ledgerDatabase: LedgerDatabase =
     Room.databaseBuilder(applicationContext, LedgerDatabase::class.java, "ledger.db")
+      .addMigrations(LedgerDatabase.MIGRATION_1_2)
       .build()
 
   val ledgerRepository: LedgerRepository = RoomLedgerRepository(
     accountDao = ledgerDatabase.accountDao(),
     transactionDao = ledgerDatabase.transactionDao(),
     categoryDao = ledgerDatabase.categoryDao(),
+    fxRateDao = ledgerDatabase.fxRateDao(),
   )
 
   /** Room-backed sink: connector rows land in the ledger, de-duplicated. */

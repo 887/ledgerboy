@@ -1,8 +1,8 @@
 # ledgerboy — main build plan
 
-## Status: 🟢 BUILDING — Phases 0 / A / X / C shipped; Phase B (CSV import) next
+## Status: 🟢 BUILDING — Phases 0 / A / X / C / B shipped; Phase D (FX) next
 
-_Phase 0 (host) verified; Phase A (scaffold + UI shell), Phase X (connector plugin runtime), and Phase C (ledger schema + Money + transaction store) shipped + verified on 2026-06-14 (25 unit tests green, UI AVD-verified). Next: Phase B first connector plugin (CSV import — lowest-friction, no network/credentials, writes into the Phase C ledger and exercises the Phase X Configure→fetch→RowSink path end-to-end), then Phase D (FX) and the screen phases E/F._
+_Shipped + verified on 2026-06-14 (30 unit tests green): Phase 0 (host), Phase A (scaffold + UI shell), Phase X (connector plugin runtime), Phase C (ledger schema + Money + transaction store), Phase B (CSV import — first connector). Next: Phase D (FX cache + MoneyConverter + ECB-direct FX plugin — exercises the network guard with a real Active plugin), then the screen phases E (accounts) / F (transactions) to surface the ledger data, then G+ onward._
 
 ## Stack (locked)
 
@@ -113,11 +113,17 @@ Goal: a buildable, sideload-able APK that boots into a blank Compose screen wire
 
 ---
 
-## Phase D — multi-currency + FX rate cache
+## Phase D — multi-currency + FX rate cache — shipped in commit __PD__
 
-**Goal:** every `Money` round-trips through the FX cache when displayed in the user's base currency. FX rates fetched on a schedule by whichever FX plugin(s) the user has enabled (ECB-direct or Bundesbank-direct — both off by default). Base-currency conversion is a `MoneyConverter` that the UI uses; the stored amount stays in the transaction's native currency. If no FX plugin is enabled, the user enters rates manually (intrinsic, no plugin needed).
+**Goal:** every `Money` round-trips through the FX cache when displayed in the user's base currency. FX rates fetched by whichever FX plugin(s) the user enables (ECB-direct shipped; Bundesbank-direct next — both off by default). Base-currency conversion is a `MoneyConverter`; the stored amount stays in the transaction's native currency. No FX plugin enabled → manual / per-transaction rates (intrinsic, no plugin).
 
-**Gated on:** Phase X (plugin runtime) and [`banking-fx.md`](banking-fx.md). Sub-steps expand once the FX plugin lands as an implementation of `ConnectorPlugin` in the `Fx` category.
+- [x] **D.1** FX cache: `FxRateEntity` (EUR-paired, rate as **1e8-scaled Long** — no float) + `FxRateDao` (`upsert`, `rateOnOrBefore` dated lookup) + Room v1→v2 `MIGRATION_1_2` creating `fx_rates`.
+- [x] **D.2** `MoneyConverter`: EUR-pivot cross-rates (`FROM→TO = (EUR→TO)/(EUR→FROM)`, inverse for `*→EUR`), latest-rate-on-or-before-the-transaction-date lookup, integer rate composition (only the final minor-unit scaling rounds); missing rate → null (UI shows a "no rate" badge, never a wrong number). `parseRateScaled1e8` parses decimal rate strings without float drift.
+- [x] **D.3** `fx-ecb` plugin (`Fx` category): fetches the daily euro-reference-rates file **directly** from the ECB (no proxy) through the guarded HTTP client (tagged + accounted), parses it with an XXE-hardened JVM-stdlib DOM walker, emits EUR-paired `FxRateRow`s. No config (public keyless feed). Registered in `PluginManifest`.
+- [x] **D.4** `RoomRowSink` routes `FxRateRow` → FX cache; repository `writeFxRate` / `fxRateOnOrBefore`.
+- [x] **D.5** Tests: `MoneyConverterTest` (6 — identity, direct, inverse, cross-with-minor-digits, missing-rate, rate parse), `EcbFxParserTest` (2), FX-cache on-or-before (1). 39 unit tests green overall. _Live ECB-fetch capture deferred: AVD concurrently driven by another session; the network path is covered by the guard test, parse by the parser test, cache + conversion by their tests._
+
+**Next FX source (future):** `fx-bundesbank` plugin (SDMX/CSV, broader pairs), same `Fx` category.
 
 ---
 

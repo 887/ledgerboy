@@ -103,6 +103,12 @@
     <string name="csv_import_selected">Selected: %1$s</string>
     <string name="csv_import_none_selected">No file selected</string>
 
+    <!-- ── ECB FX plugin (Phase D) ── -->
+    <string name="ecb_fx_name">ECB exchange rates</string>
+    <string name="ecb_fx_desc">Daily euro reference rates published directly by the European Central Bank. Used to show balances in your base currency.</string>
+    <string name="ecb_fx_privacy">A small public rates file is downloaded directly from ecb.europa.eu. No account data leaves your device — only the request for the published rates.</string>
+    <string name="ecb_fx_config_note">No configuration needed. Test connection fetches today\'s published rates from the ECB.</string>
+
     <!-- ── Licenses screen ── -->
     <string name="licenses_screen_title">Open-source licenses</string>
     <string name="licenses_empty">License inventory is generated at build time and was not found in this build.</string>

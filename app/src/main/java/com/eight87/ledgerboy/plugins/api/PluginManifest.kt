@@ -12,6 +12,7 @@ package com.eight87.ledgerboy.plugins.api
 object PluginManifest {
   val all: List<ConnectorPlugin> = listOf(
     com.eight87.ledgerboy.plugins.csvimport.CsvImportPlugin,
+    com.eight87.ledgerboy.plugins.ecbfx.EcbFxPlugin,
   )
 
   fun byId(id: String): ConnectorPlugin? = all.firstOrNull { it.id == id }
