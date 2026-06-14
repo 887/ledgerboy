@@ -24,6 +24,9 @@ import com.eight87.ledgerboy.ui.screens.PlaceholderScreen
 import com.eight87.ledgerboy.ui.settings.AboutScreen
 import com.eight87.ledgerboy.ui.settings.LicensesScreen
 import com.eight87.ledgerboy.ui.settings.SettingsScreen
+import com.eight87.ledgerboy.ui.settings.plugins.NetworkUsageScreen
+import com.eight87.ledgerboy.ui.settings.plugins.PluginConfigScreen
+import com.eight87.ledgerboy.ui.settings.plugins.PluginsScreen
 
 /**
  * A.5 — root composable. The locked family shell: a vertical navigation
@@ -36,13 +39,12 @@ import com.eight87.ledgerboy.ui.settings.SettingsScreen
  * one `entry<>` arm here — the rail and the dispatcher stay closed
  * against modification of their existing arms (OCP).
  *
- * `@Suppress("unused")` on [graph]: it is the composition root handed in
- * from the activity and will wire ViewModels / repositories into the
- * destinations as real surfaces land (Phase C+). Kept in the signature
- * now so the call site is stable.
+ * [graph] is the composition root handed in from the activity; the
+ * plugin screens read the runtime/manifest from it, and future surfaces
+ * (Phase C+) pull their repositories the same way.
  */
 @Composable
-fun LedgerboyApp(@Suppress("UNUSED_PARAMETER") graph: AppGraph) {
+fun LedgerboyApp(graph: AppGraph) {
   val backStack = remember { LedgerboyBackStack() }
   // The active root for rail highlighting is the bottom of the stack;
   // sub-pages push above it but keep their root selected.
@@ -120,6 +122,7 @@ fun LedgerboyApp(@Suppress("UNUSED_PARAMETER") graph: AppGraph) {
             RootScaffold(R.string.dest_settings) {
               SettingsScreen(
                 onOpenAbout = { backStack.push(SettingsAbout) },
+                onOpenPlugins = { backStack.push(SettingsPlugins) },
                 modifier = it,
               )
             }
@@ -132,6 +135,24 @@ fun LedgerboyApp(@Suppress("UNUSED_PARAMETER") graph: AppGraph) {
           }
           entry<SettingsLicenses> {
             LicensesScreen(onBack = { backStack.pop() })
+          }
+          entry<SettingsPlugins> {
+            PluginsScreen(
+              graph = graph,
+              onBack = { backStack.pop() },
+              onConfigure = { id -> backStack.push(SettingsPluginConfig(id)) },
+              onOpenNetworkUsage = { backStack.push(SettingsNetworkUsage) },
+            )
+          }
+          entry<SettingsNetworkUsage> {
+            NetworkUsageScreen(graph = graph, onBack = { backStack.pop() })
+          }
+          entry<SettingsPluginConfig> { key ->
+            PluginConfigScreen(
+              graph = graph,
+              pluginId = key.pluginId,
+              onBack = { backStack.pop() },
+            )
           }
         },
       )

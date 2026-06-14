@@ -284,28 +284,28 @@ the Plugins screen so the user can see what's underneath each.
 **Phase X — plugin runtime** (new, lands before Phase B). This is the
 host-side scaffolding every connector plugin builds on:
 
-- [ ] **X.1** `ConnectorPlugin` interface + `PluginCategory` enum +
+- [x] **X.1** `ConnectorPlugin` interface + `PluginCategory` enum +
       `PluginState` state-machine in `app/.../plugins/api/`.
-- [ ] **X.2** `PluginManifest` singleton listing every shipped plugin
+- [x] **X.2** `PluginManifest` singleton listing every shipped plugin
       (initially empty — populated as plugins land in Phase B+).
-- [ ] **X.3** Per-plugin DataStore namespace + `PluginConfigStore`
+- [x] **X.3** Per-plugin DataStore namespace + `PluginConfigStore`
       helper for plugins to persist config without colliding.
-- [ ] **X.4** `PluginNetworkGuard` OkHttp `Interceptor` rejecting
+- [x] **X.4** `PluginNetworkGuard` OkHttp `Interceptor` rejecting
       requests not originating from `Active` plugins; per-plugin
       bytes-in/out / fetch-count / error-count accumulators.
-- [ ] **X.5** `PluginScheduler` (WorkManager) — per-plugin
+- [x] **X.5** `PluginScheduler` (WorkManager) — per-plugin
       schedule-or-manual; respects the per-plugin background-sync
       opt-in; honours disable kill-switch within one tick.
-- [ ] **X.6** Settings → Plugins screen — accordion by category,
+- [x] **X.6** Settings → Plugins screen — accordion by category,
       per-plugin cards with state chip + toggle + Configure button;
       built on the Settings catalog DSL from [`ui-shell.md`](ui-shell.md).
-- [ ] **X.7** Settings → Plugins → Network usage sub-screen — per-plugin
+- [x] **X.7** Settings → Plugins → Network usage sub-screen — per-plugin
       totals + endpoint list + privacy statement; user-visible audit.
-- [ ] **X.8** Per-plugin Configure flow shell — opens the plugin's
+- [x] **X.8** Per-plugin Configure flow shell — opens the plugin's
       `@Composable ConfigScreen()`, provides the SAF / Keystore /
       strings helpers; "Test connection" runs one fetch with explicit
       user confirmation before transitioning state to `Active`.
-- [ ] **X.9** Robolectric tests: state-machine transitions, network-
+- [x] **X.9** Robolectric tests: state-machine transitions, network-
       guard rejection of disabled plugins, scheduler kill-switch
       latency.
 

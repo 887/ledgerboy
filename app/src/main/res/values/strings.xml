@@ -60,6 +60,39 @@
     <string name="about_easter_first">Tap twice more for a surprise.</string>
     <string name="about_easter_second">One more time.</string>
 
+    <!-- ── Plugins (Settings → Plugins, Phase X) ── -->
+    <string name="plugins_title">Plugins</string>
+    <string name="plugins_privacy_banner">Every connector is disabled by default. ledgerboy makes no network calls until you enable and configure one.</string>
+    <string name="plugins_empty_category">No connectors in this build yet.</string>
+    <string name="plugins_category_banking">Banking</string>
+    <string name="plugins_category_asset_price">Asset prices</string>
+    <string name="plugins_category_fx">Exchange rates</string>
+    <string name="plugins_category_import">Import</string>
+    <string name="plugins_category_regional_index">Regional indexes</string>
+    <string name="plugins_state_disabled">Disabled</string>
+    <string name="plugins_state_enabled">Enabled, not configured</string>
+    <string name="plugins_state_configured">Configured</string>
+    <string name="plugins_state_active">Active</string>
+    <string name="plugins_enable">Enable</string>
+    <string name="plugins_configure">Configure</string>
+    <string name="plugins_network_usage">Network usage</string>
+    <string name="plugins_network_usage_sub">Per-connector traffic and endpoints</string>
+    <string name="plugins_test_connection">Test connection</string>
+
+    <!-- ── Network usage sub-screen ── -->
+    <string name="network_usage_title">Network usage</string>
+    <string name="network_usage_empty">No connector has made a network call. ledgerboy has sent nothing.</string>
+    <string name="network_usage_bytes_in">Received</string>
+    <string name="network_usage_bytes_out">Sent</string>
+    <string name="network_usage_fetches">Fetches</string>
+    <string name="network_usage_errors">Errors</string>
+    <string name="network_usage_endpoints">Endpoints called</string>
+
+    <!-- ── Plugin configure shell ── -->
+    <string name="plugin_config_title">Configure</string>
+    <string name="plugin_config_privacy_label">What leaves your device</string>
+    <string name="plugin_config_license_label">License</string>
+
     <!-- ── Licenses screen ── -->
     <string name="licenses_screen_title">Open-source licenses</string>
     <string name="licenses_empty">License inventory is generated at build time and was not found in this build.</string>

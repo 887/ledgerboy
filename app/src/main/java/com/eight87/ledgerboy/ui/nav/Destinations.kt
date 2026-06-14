@@ -39,6 +39,11 @@ sealed interface Destination : NavKey
 @Serializable data object SettingsAbout : Destination
 @Serializable data object SettingsLicenses : Destination
 
+// ── Plugins sub-pages (Phase X) ──
+@Serializable data object SettingsPlugins : Destination
+@Serializable data object SettingsNetworkUsage : Destination
+@Serializable data class SettingsPluginConfig(val pluginId: String) : Destination
+
 /**
  * The rail items, in display order. Each maps a top-level [Destination]
  * to its rail icon + label. Adding a destination is one entry here plus

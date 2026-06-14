@@ -41,6 +41,7 @@ import com.eight87.ledgerboy.ui.settings.catalog.SettingsRowDivider
 @Composable
 fun SettingsScreen(
   onOpenAbout: () -> Unit,
+  onOpenPlugins: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val comingSoon = stringResource(R.string.settings_coming_soon)
@@ -74,7 +75,8 @@ fun SettingsScreen(
         id = "settings.plugins",
         icon = Icons.Outlined.Extension,
         label = stringResource(R.string.settings_plugins),
-        subtitle = comingSoon,
+        subtitle = stringResource(R.string.settings_plugins_sub),
+        onClick = onOpenPlugins,
       )
       SettingsRowDivider()
       SettingsRow(
