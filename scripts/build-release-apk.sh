@@ -12,9 +12,7 @@
 # published release set LEDGER_RELEASE_KEYSTORE + LEDGER_RELEASE_KEY_ALIAS +
 # LEDGER_RELEASE_KEY_PASSWORD and the Gradle release config picks them up.
 #
-# Local build is the primary path — zero CI minutes by default. The
-# .github/workflows/release.yml fallback is tag-only and self-disabling
-# (exits 0 if an APK is already attached to the tag's release).
+# Local build is the only release path; there is no CI workflow.
 set -euo pipefail
 
 ROOT="$(dirname "$(readlink -f "$0")")/.."
