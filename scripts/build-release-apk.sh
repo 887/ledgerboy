@@ -116,6 +116,8 @@ EOF
         gh release edit "${REL_TAG}" --notes-file "${NOTES}" >/dev/null
     else
         git rev-parse -q --verify "refs/tags/${REL_TAG}" >/dev/null || git tag -a "${REL_TAG}" -m "ledgerboy ${TAG}"
+        # gh refuses a tag that exists only locally — push it first.
+        git push origin "refs/tags/${REL_TAG}"
         gh release create "${REL_TAG}" "${OUT_APK}" --title "ledgerboy ${VERSION} (${SHA7})" --notes-file "${NOTES}"
     fi
     rm -f "${NOTES}"
