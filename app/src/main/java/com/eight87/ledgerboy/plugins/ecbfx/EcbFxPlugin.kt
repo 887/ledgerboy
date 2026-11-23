@@ -58,8 +58,8 @@ object EcbFxPlugin : ConnectorPlugin {
       runCatching {
         host.http.newCall(request).execute().use { response ->
           if (!response.isSuccessful) return@runCatching null
-          val body = response.body?.string()
-          body?.let { it to it.length.toLong() }
+          val body = response.body.string()
+          body to body.length.toLong()
         }
       }.getOrNull()
     } ?: return FetchResult.Error("Could not reach the ECB rates feed")

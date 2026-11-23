@@ -98,7 +98,7 @@ object CoinbaseCryptoPlugin : ConnectorPlugin {
       runCatching {
         host.http.newCall(request).execute().use { response ->
           if (!response.isSuccessful) return@runCatching null
-          response.body?.string()?.let { it to it.length.toLong() }
+          response.body.string().let { it to it.length.toLong() }
         }
       }.getOrNull()
     } ?: return FetchResult.Error("Could not reach Coinbase for $pair")

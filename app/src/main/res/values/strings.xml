@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ledgerboy</string>
+    <string name="app_name" translatable="false">ledgerboy</string>
 
     <!-- ── Navigation destinations (vertical rail + top bar) ── -->
     <string name="dest_overview">Overview</string>
@@ -12,15 +12,6 @@
 
     <!-- ── Common ── -->
     <string name="cd_back">Back</string>
-    <string name="cd_open_settings">Open settings</string>
-    <string name="cd_navigation_rail">Main navigation</string>
-
-    <!-- ── Placeholder destination bodies (real surfaces land in later phases) ── -->
-    <string name="placeholder_overview">Your net worth, recent activity, and uncategorized count will appear here.</string>
-    <string name="placeholder_accounts">Accounts across every bank, grouped by institution, land here.</string>
-    <string name="placeholder_budgets">Envelope, category, and rolling budgets land here.</string>
-    <string name="placeholder_assets">Real estate, vehicles, securities, and collectibles land here.</string>
-    <string name="placeholder_charts">Net-worth-over-time, cashflow, and allocation charts land here.</string>
 
     <!-- ── Accounts screen (Phase E) ── -->
     <string name="accounts_empty_title">No accounts yet</string>
@@ -58,7 +49,10 @@
     <string name="categories_rule_add">Add rule</string>
     <string name="categories_no_rules">No rules yet. Add a category first, then a rule.</string>
     <string name="categories_apply_rules">Apply rules to uncategorized</string>
-    <string name="categories_applied">Categorized %1$d transactions</string>
+    <plurals name="categories_applied">
+        <item quantity="one">Categorized %1$d transaction</item>
+        <item quantity="other">Categorized %1$d transactions</item>
+    </plurals>
     <string name="categories_rule_summary">Payee contains \"%1$s\" → %2$s</string>
 
     <!-- ── Budgets screen (Phase H) ── -->
@@ -87,7 +81,6 @@
     <string name="asset_detail_history">Valuation history</string>
     <string name="asset_detail_revalue_hint">New value</string>
     <string name="asset_detail_add_valuation">Record valuation</string>
-    <string name="asset_detail_acquired">Acquired for %1$s</string>
     <string name="asset_detail_no_history">No valuations yet. Record one to start the history.</string>
     <string name="asset_valuation_source_manual">manual</string>
 
@@ -109,24 +102,18 @@
     <string name="onboarding_next_step">Next: import a statement from Settings → Plugins, or add accounts as you go.</string>
 
     <!-- ── Settings root ── -->
-    <string name="settings_title">Settings</string>
     <string name="settings_group_general">General</string>
     <string name="settings_group_connectors">Connectors</string>
     <string name="settings_group_data">Data</string>
     <string name="settings_group_about">About</string>
 
     <string name="settings_base_currency">Base currency</string>
-    <string name="settings_base_currency_sub">Currency net worth is reported in</string>
     <string name="settings_appearance">Appearance</string>
-    <string name="settings_appearance_sub">Theme and display density</string>
     <string name="settings_plugins">Plugins</string>
     <string name="settings_plugins_sub">Banking, asset price, FX, and import connectors</string>
     <string name="settings_import">Import</string>
-    <string name="settings_import_sub">Statement files and watch folders</string>
     <string name="settings_privacy">Privacy</string>
-    <string name="settings_privacy_sub">Network usage and sample data</string>
     <string name="settings_security">Security</string>
-    <string name="settings_security_sub">App lock and credential storage</string>
     <string name="settings_about">About ledgerboy</string>
     <string name="settings_about_sub">Version, source, and licenses</string>
 
@@ -138,9 +125,9 @@
     <string name="about_version_label">Version</string>
     <string name="about_build_label">Build</string>
     <string name="about_source_label">Source code</string>
-    <string name="about_source_value">github.com/887/ledgerboy</string>
+    <string name="about_source_value" translatable="false">github.com/887/ledgerboy</string>
     <string name="about_license_label">License</string>
-    <string name="about_license_value">MIT</string>
+    <string name="about_license_value" translatable="false">MIT</string>
     <string name="about_oss_label">Open-source licenses</string>
     <string name="about_oss_sub">Inventory of bundled dependencies</string>
     <string name="about_easter_first">Tap twice more for a surprise.</string>
@@ -159,7 +146,6 @@
     <string name="plugins_state_enabled">Enabled, not configured</string>
     <string name="plugins_state_configured">Configured</string>
     <string name="plugins_state_active">Active</string>
-    <string name="plugins_enable">Enable</string>
     <string name="plugins_configure">Configure</string>
     <string name="plugins_network_usage">Network usage</string>
     <string name="plugins_network_usage_sub">Per-connector traffic and endpoints</string>

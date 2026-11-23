@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -12,16 +13,15 @@ plugins {
 }
 
 // A.7 — capture build-time metadata that the About screen renders.
-// `git rev-parse --short HEAD` is shelled out at configuration time so
+// `git rev-parse --short HEAD` runs via `providers.exec` at configuration time so
 // the value is baked into BuildConfig.GIT_SHA. The ISO-8601 build date
 // is captured at the same time; both fall back to sentinels if the
 // underlying command fails (e.g. building from a tarball without git).
 val gitShortSha: String = runCatching {
-  val proc = ProcessBuilder("git", "rev-parse", "--short", "HEAD")
-    .redirectErrorStream(true)
-    .start()
-  proc.waitFor()
-  proc.inputStream.bufferedReader().readText().trim().ifEmpty { "unknown" }
+  providers.exec {
+    commandLine("git", "rev-parse", "--short", "HEAD")
+    isIgnoreExitValue = true
+  }.standardOutput.asText.get().trim().ifEmpty { "unknown" }
 }.getOrDefault("unknown")
 
 val buildDateUtc: String = DateTimeFormatter.ISO_LOCAL_DATE
@@ -29,7 +29,11 @@ val buildDateUtc: String = DateTimeFormatter.ISO_LOCAL_DATE
 
 android {
     namespace = "com.eight87.ledgerboy"
-    compileSdk = 36
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 2
+        }
+    }
     defaultConfig {
         applicationId = "com.eight87.ledgerboy"
         // A.3 — family floor. Strongbox / biometric / SAF behaviour is
@@ -54,8 +58,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     buildFeatures {
       compose = true
@@ -94,34 +98,47 @@ licensee {
     allow("MPL-2.0")
 }
 
-// oss-licenses A.4 — copy the per-variant Licensee `artifacts.json` into
-// `src/main/assets/licenses/` so `LicensesScreen` reads it via
-// AssetManager at runtime. Wired as a dependency of the variant's
-// mergeAssets task so the asset stays self-consistent with the build's
-// resolved classpath.
+// oss-licenses A.4 — publish the per-variant Licensee `artifacts.json` as
+// a generated asset (`licenses/artifacts.json`) so `LicensesScreen` reads
+// it via AssetManager at runtime. Registered through the AGP Variant API
+// (`sources.assets.addGeneratedSourceDirectory`), so every consumer of the
+// variant's assets — mergeAssets, lint, Robolectric — gets the task
+// dependency wired automatically and the asset stays self-consistent with
+// the build's resolved classpath. Nothing is written into `src/`.
+abstract class LicensesAssetTask : DefaultTask() {
+    @get:InputFile
+    abstract val licenseeReport: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val target = outputDir.get().asFile.resolve("licenses")
+        target.deleteRecursively()
+        target.mkdirs()
+        licenseeReport.get().asFile.copyTo(target.resolve("artifacts.json"))
+    }
+}
+
 val licenseeReportDir = layout.buildDirectory.dir("reports/licensee")
-val licensesAssetDir = layout.projectDirectory.dir("src/main/assets/licenses")
 
 androidComponents {
     onVariants { variant ->
         val variantName = variant.name.replaceFirstChar { it.uppercase() }
-        val copyTask = tasks.register<Copy>("copyLicensesAssetFor$variantName") {
-            dependsOn("licenseeAndroid$variantName")
-            from(licenseeReportDir.map { it.dir("android$variantName") }) {
-                include("artifacts.json")
-            }
-            into(licensesAssetDir)
+        val licenseeTask = tasks.named("licenseeAndroid$variantName")
+        val copyTask = tasks.register<LicensesAssetTask>("copyLicensesAssetFor$variantName") {
+            dependsOn(licenseeTask)
+            licenseeReport.set(licenseeReportDir.map { it.file("android$variantName/artifacts.json") })
         }
-        afterEvaluate {
-            tasks.named("merge${variantName}Assets").configure {
-                dependsOn(copyTask)
-            }
-        }
+        variant.sources.assets?.addGeneratedSourceDirectory(copyTask, LicensesAssetTask::outputDir)
     }
 }
 
 kotlin {
-    jvmToolchain(17)
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
 }
 
 dependencies {
@@ -167,7 +184,7 @@ dependencies {
   implementation(libs.androidx.core.splashscreen)
 
   // SAF tree walking for import-file workflows.
-  implementation("androidx.documentfile:documentfile:1.0.1")
+  implementation(libs.androidx.documentfile)
 
   // kotlinx-serialization JSON — plugin config + licenses model.
   implementation(libs.kotlinx.serialization.json)

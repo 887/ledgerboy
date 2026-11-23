@@ -1,7 +1,7 @@
 package com.eight87.ledgerboy.plugins.runtime
 
 import android.content.Context
-import android.net.Uri
+import androidx.core.net.toUri
 import com.eight87.ledgerboy.plugins.api.CredentialStore
 import com.eight87.ledgerboy.plugins.api.PluginHost
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +35,7 @@ class AppPluginHost(
   override suspend fun readImportFile(uri: String, charset: Charset): String? =
     withContext(Dispatchers.IO) {
       runCatching {
-        appContext.contentResolver.openInputStream(Uri.parse(uri))?.use { stream ->
+        appContext.contentResolver.openInputStream(uri.toUri())?.use { stream ->
           stream.readBytes().toString(charset)
         }
       }.getOrNull()

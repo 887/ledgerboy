@@ -27,7 +27,7 @@ Same as tonearmboy / whisperboy:
 - [ ] **A.1** Add Licensee plugin to `gradle/libs.versions.toml` (current stable line — verify at scaffold time).
 - [ ] **A.2** Apply `alias(libs.plugins.licensee)` in `app/build.gradle.kts`.
 - [ ] **A.3** Configure `licensee { allow("Apache-2.0"); allow("MIT"); allow("BSD-2-Clause"); allow("BSD-3-Clause"); allow("MPL-2.0") }`. Reporting-only at first; `failOnDisallowed` left default in Phase A and flipped to `true` in Phase C.
-- [ ] **A.4** Wire `androidComponents.onVariants` to a per-variant `Copy` task that depends on `licenseeAndroid<Variant>` and feeds `merge<Variant>Assets`. Copies `build/reports/licensee/android<Variant>/artifacts.json` into `src/main/assets/licenses/`.
+- [ ] **A.4** Wire `androidComponents.onVariants` to a per-variant `Copy` task that depends on `licenseeAndroid<Variant>` and feeds `merge<Variant>Assets`. Copies `build/reports/licensee/android<Variant>/artifacts.json` into `src/main/assets/licenses/`. (Since the AGP 9.5 / Gradle 9.9 upgrade: a typed `LicensesAssetTask` registered via `variant.sources.assets.addGeneratedSourceDirectory`, so lint and every other asset consumer get the dependency; the file is no longer written into `src/`.)
 - [ ] **A.5** Source `Apache-2.0.txt`, `MIT.txt`, `BSD-3-Clause.txt` (and `MPL-2.0.txt`, `BSD-2-Clause.txt` as needed) from `https://spdx.org/licenses/<id>.txt` (canonical SPDX). Drop into `app/src/main/assets/licenses/`.
 - [ ] **A.6** `:app:assembleDebug` clean. `assets/licenses/artifacts.json` parses, every entry has a SPDX in the allowlist. Spot-check a known shipping dep.
 

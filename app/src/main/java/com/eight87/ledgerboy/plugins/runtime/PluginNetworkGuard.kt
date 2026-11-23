@@ -46,7 +46,7 @@ class PluginNetworkGuard(
     val bytesOut = request.body?.contentLength()?.coerceAtLeast(0L) ?: 0L
     return try {
       val response = chain.proceed(request)
-      val bytesIn = response.body?.contentLength()?.coerceAtLeast(0L) ?: 0L
+      val bytesIn = response.body.contentLength().coerceAtLeast(0L)
       runtime.recordTraffic(
         pluginId = pluginId,
         bytesIn = bytesIn,

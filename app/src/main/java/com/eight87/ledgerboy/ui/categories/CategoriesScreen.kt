@@ -36,6 +36,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -68,7 +69,7 @@ fun CategoriesScreen(
   var newCategory by remember { mutableStateOf("") }
   var rulePattern by remember { mutableStateOf("") }
   var ruleCategoryId by remember { mutableStateOf<String?>(null) }
-  val appliedTemplate = stringResource(R.string.categories_applied)
+  val resources = LocalResources.current
 
   Scaffold(
     topBar = {
@@ -208,7 +209,7 @@ fun CategoriesScreen(
         onClick = {
           scope.launch {
             val n = ledger.applyRulesToUncategorized()
-            snackbar.showSnackbar(appliedTemplate.format(n))
+            snackbar.showSnackbar(resources.getQuantityString(R.plurals.categories_applied, n, n))
           }
         },
         modifier = Modifier.fillMaxWidth(),

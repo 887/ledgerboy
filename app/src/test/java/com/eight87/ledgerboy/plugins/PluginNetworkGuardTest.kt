@@ -32,7 +32,7 @@ class PluginNetworkGuardTest {
   private fun get(client: okhttp3.OkHttpClient, tagged: Boolean) {
     val builder = Request.Builder().url(server.url("/rates"))
     if (tagged) builder.taggedFor(id)
-    client.newCall(builder.build()).execute().use { it.body?.string() }
+    client.newCall(builder.build()).execute().use { it.body.string() }
   }
 
   @Test

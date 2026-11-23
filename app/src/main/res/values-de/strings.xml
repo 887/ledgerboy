@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Q — German (DACH) translation. Partial override; any key not present
-  here falls back to the canonical English at runtime (Android default,
-  intended — not a placeholder). Authored user + Claude, English
+  Q — German (DACH) translation. Complete translation: every
+  translatable key in values/strings.xml has a German counterpart here
+  (lint MissingTranslation is a hard error). Authored user + Claude, English
   canonical. English-only schema identifiers stay in code; this file is
   i18n display strings only.
 -->
@@ -18,11 +18,7 @@
     <!-- Common -->
     <string name="cd_back">Zurück</string>
 
-    <!-- Placeholder bodies -->
-    <string name="placeholder_overview">Hier erscheinen Ihr Nettovermögen, die letzten Aktivitäten und die Anzahl nicht kategorisierter Buchungen.</string>
-
     <!-- Settings root -->
-    <string name="settings_title">Einstellungen</string>
     <string name="settings_group_general">Allgemein</string>
     <string name="settings_group_connectors">Verbindungen</string>
     <string name="settings_group_data">Daten</string>
@@ -128,4 +124,64 @@
     <!-- Licenses -->
     <string name="licenses_screen_title">Open-Source-Lizenzen</string>
     <string name="licenses_dialog_close">Schließen</string>
+
+    <!-- Remaining screens, plugins, About + Licenses (completes Q) -->
+    <string name="accounts_empty_body">Importieren Sie eine Kontoauszugsdatei unter Einstellungen → Plugins → CSV-Import oder aktivieren Sie eine Bankverbindung, um Ihre Konten hier zu sehen.</string>
+    <string name="transactions_empty">Keine passenden Buchungen.</string>
+    <string name="transaction_detail_clear_category">Kategorie entfernen</string>
+    <string name="transaction_detail_no_categories">Noch keine Kategorien. Legen Sie Kategorien an, um Buchungen zu ordnen.</string>
+    <string name="overview_empty_body">Sobald Sie Buchungen importieren, erscheinen hier Ihre Salden und Aktivitäten.</string>
+    <string name="categories_title">Kategorien &amp; Regeln</string>
+    <string name="categories_section_categories">Kategorien</string>
+    <string name="categories_section_rules">Regeln zur automatischen Kategorisierung</string>
+    <string name="categories_add_hint">Name der neuen Kategorie</string>
+    <string name="categories_add_button">Hinzufügen</string>
+    <string name="categories_empty">Noch keine Kategorien.</string>
+    <string name="categories_rule_hint">Empfänger enthält…</string>
+    <string name="categories_rule_pick">Kategorisieren als</string>
+    <string name="categories_rule_add">Regel hinzufügen</string>
+    <string name="categories_no_rules">Noch keine Regeln. Legen Sie zuerst eine Kategorie an, dann eine Regel.</string>
+    <string name="categories_apply_rules">Regeln auf nicht kategorisierte Buchungen anwenden</string>
+    <plurals name="categories_applied">
+        <item quantity="one">%1$d Buchung kategorisiert</item>
+        <item quantity="other">%1$d Buchungen kategorisiert</item>
+    </plurals>
+    <string name="categories_rule_summary">Empfänger enthält \"%1$s\" → %2$s</string>
+    <string name="budgets_empty_body">Legen Sie ein monatliches Ausgabenlimit für eine Kategorie fest, um es hier zu verfolgen.</string>
+    <string name="budgets_no_categories">Legen Sie zuerst eine Kategorie an (Einstellungen → Kategorien &amp; Regeln).</string>
+    <string name="budgets_spent_of">%1$s von %2$s</string>
+    <string name="assets_empty_body">Fügen Sie eine Immobilie, ein Fahrzeug, Wertpapiere, Krypto oder ein Sammlerstück hinzu, um seinen Wert im Zeitverlauf zu verfolgen.</string>
+    <string name="asset_detail_revalue_hint">Neuer Wert</string>
+    <string name="asset_detail_no_history">Noch keine Bewertungen. Erfassen Sie eine, um den Verlauf zu beginnen.</string>
+    <string name="asset_valuation_source_manual">manuell</string>
+    <string name="charts_empty_body">Importieren Sie Buchungen, um hier Ausgaben und Cashflow zu sehen.</string>
+    <string name="charts_spending_empty">In diesem Monat keine Ausgaben erfasst.</string>
+    <string name="onboarding_next_step">Als Nächstes: Importieren Sie einen Kontoauszug unter Einstellungen → Plugins oder legen Sie Konten nach und nach an.</string>
+    <string name="about_app_blurb">Ein lokaler Tracker für persönliche Finanzen, Budgets und Vermögenswerte. Jede Bank-, Kurs-, Wechselkurs- und Importverbindung ist ein Plugin und standardmäßig deaktiviert — ledgerboy baut keinerlei Netzwerkverbindungen auf, bis Sie eines aktivieren.</string>
+    <string name="about_oss_sub">Verzeichnis der mitgelieferten Abhängigkeiten</string>
+    <string name="about_easter_first">Noch zweimal tippen für eine Überraschung.</string>
+    <string name="about_easter_second">Noch ein Mal.</string>
+    <string name="plugins_network_usage_sub">Datenverkehr und Endpunkte je Verbindung</string>
+    <string name="plugin_config_title">Konfigurieren</string>
+    <string name="plugin_config_privacy_label">Was Ihr Gerät verlässt</string>
+    <string name="plugin_config_license_label">Lizenz</string>
+    <string name="csv_import_name">CSV-Import</string>
+    <string name="csv_import_desc">Importieren Sie Buchungen aus einer CSV-Kontoauszugsdatei, die Ihre Bank exportiert. Die Datei wird nur auf dem Gerät gelesen — kein Netzwerk.</string>
+    <string name="csv_import_privacy">Nichts verlässt Ihr Gerät. Die gewählte CSV-Datei wird lokal gelesen und in Buchungen umgewandelt, die auf diesem Gerät gespeichert werden.</string>
+    <string name="csv_import_account_label">Kontoname</string>
+    <string name="csv_import_format_label">Format</string>
+    <string name="csv_import_pick">CSV-Datei auswählen</string>
+    <string name="csv_import_selected">Ausgewählt: %1$s</string>
+    <string name="csv_import_none_selected">Keine Datei ausgewählt</string>
+    <string name="ecb_fx_name">EZB-Wechselkurse</string>
+    <string name="ecb_fx_desc">Tägliche Euro-Referenzkurse, direkt von der Europäischen Zentralbank veröffentlicht. Werden verwendet, um Salden in Ihrer Basiswährung anzuzeigen.</string>
+    <string name="ecb_fx_privacy">Eine kleine öffentliche Kursdatei wird direkt von ecb.europa.eu geladen. Keine Kontodaten verlassen Ihr Gerät — nur die Anfrage nach den veröffentlichten Kursen.</string>
+    <string name="ecb_fx_config_note">Keine Konfiguration nötig. „Verbindung testen“ lädt die heute veröffentlichten Kurse der EZB.</string>
+    <string name="coinbase_name">Coinbase-Kryptokurs</string>
+    <string name="coinbase_desc">Einen Krypto-Kassakurs direkt von Coinbase abrufen, um einen Ihrer Vermögenswerte neu zu bewerten.</string>
+    <string name="coinbase_privacy">Eine öffentliche Kursanfrage für das gewählte Paar geht direkt an api.coinbase.com. Keine Kontodaten und kein API-Schlüssel verlassen Ihr Gerät.</string>
+    <string name="coinbase_asset_hint">ID des neu zu bewertenden Vermögenswerts</string>
+    <string name="coinbase_pair_hint">Paar (z. B. BTC-EUR)</string>
+    <string name="licenses_empty">Das Lizenzverzeichnis wird beim Build erzeugt und wurde in diesem Build nicht gefunden.</string>
+    <string name="licenses_unknown_spdx">Lizenz nicht angegeben</string>
 </resources>

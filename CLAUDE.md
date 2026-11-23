@@ -70,11 +70,11 @@ chmod +x ~/.local/bin/android
 android --version  # self-bootstraps the runtime on first call
 ```
 
-The CLI bundles its own JDK 21 at `~/.android/cli/bundles/<hash>/jre/`. **Caveat:** the bundled JRE is *minimized* — it's missing modules including `java.rmi`, which Gradle 9.1's Kotlin DSL classpath fingerprinter loads. Direct `./gradlew` invocations against the bundled JRE will fail at configuration time with `java.lang.NoClassDefFoundError: java/rmi/Remote`. For direct Gradle calls, export `JAVA_HOME` to a full system JDK 17+ instead — for example `/usr/lib/jvm/java-26-openjdk` on this user's machine. Going through `android run` / other `android` subcommands is fine and uses the bundled toolchain internally.
+The CLI bundles its own JDK 21 at `~/.android/cli/bundles/<hash>/jre/`. **Caveat:** the bundled JRE is *minimized* — it's missing modules including `java.rmi`, which Gradle 9.1's Kotlin DSL classpath fingerprinter loads. Direct `./gradlew` invocations against the bundled JRE will fail at configuration time with `java.lang.NoClassDefFoundError: java/rmi/Remote`. For direct Gradle calls, export `JAVA_HOME` to a full system JDK 17+ instead — for example `/usr/lib/jvm/java-27-openjdk` on this user's machine. Going through `android run` / other `android` subcommands is fine and uses the bundled toolchain internally.
 
 Practical rule of thumb:
 - `android run --apks=…` → just works.
-- `./gradlew assembleDebug` → `JAVA_HOME=/usr/lib/jvm/java-26-openjdk ANDROID_HOME=$HOME/Android/Sdk ./gradlew assembleDebug` (or equivalent system JDK 17+ path).
+- `./gradlew assembleDebug` → `JAVA_HOME=/usr/lib/jvm/java-27-openjdk ANDROID_HOME=$HOME/Android/Sdk ./gradlew assembleDebug` (or equivalent system JDK 17+ path).
 
 **Worktree caveat:** Gradle reads the SDK path from `local.properties`, which is gitignored. Worktrees created off `main` for subagents start without a `local.properties`, so direct `./gradlew` calls there will fail with `SDK location not found` unless `ANDROID_HOME` is exported (or `local.properties` is generated locally in the worktree). Always export `ANDROID_HOME=$HOME/Android/Sdk` alongside `JAVA_HOME` when invoking Gradle directly in an agent worktree.
 
@@ -148,7 +148,7 @@ Any change that touches Compose UI (layout, composable structure, navigation, th
 Canonical loop:
 
 ```bash
-JAVA_HOME=/usr/lib/jvm/java-26-openjdk ANDROID_HOME=$HOME/Android/Sdk ./gradlew :app:assembleDebug
+JAVA_HOME=/usr/lib/jvm/java-27-openjdk ANDROID_HOME=$HOME/Android/Sdk ./gradlew :app:assembleDebug
 adb -s emulator-5554 install -r app/build/outputs/apk/debug/ledgerboy-debug.apk
 adb -s emulator-5554 shell am start -n com.eight87.ledgerboy/.LedgerboyActivity
 adb -s emulator-5554 exec-out screencap -p | magick - -resize 50% /tmp/ledgerboy.png   # then Read the PNG
@@ -197,7 +197,7 @@ The codebase follows SOLID where it earns its keep. Kotlin + Compose change *how
 
 ## Open-source licenses
 
-Every dep that ships in the APK is inventoried at build time by the [Licensee](https://github.com/cashapp/licensee) Gradle plugin (config block in `app/build.gradle.kts`); the resulting `artifacts.json` is copied into `app/src/main/assets/licenses/` and rendered by `LicensesScreen` (linked from About → "Open-source licenses"). Allowed SPDX ids: `Apache-2.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause`, `MPL-2.0` (the last only if a banking library demands it and there's no Apache/MIT alternative — see [`docs/plans/oss-licenses.md`](docs/plans/oss-licenses.md)).
+Every dep that ships in the APK is inventoried at build time by the [Licensee](https://github.com/cashapp/licensee) Gradle plugin (config block in `app/build.gradle.kts`); the resulting `artifacts.json` is published as a generated asset (`assets/licenses/artifacts.json`, via the AGP Variant API — not written into `src/`) and rendered by `LicensesScreen` (linked from About → "Open-source licenses"). Allowed SPDX ids: `Apache-2.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause`, `MPL-2.0` (the last only if a banking library demands it and there's no Apache/MIT alternative — see [`docs/plans/oss-licenses.md`](docs/plans/oss-licenses.md)).
 
 **License compatibility is load-bearing for ledgerboy more than for the other family members:** banking / finance libraries on the JVM are disproportionately LGPL or GPL. **No GPL/AGPL/LGPL deps land in this app — including transitive deps pulled in by any plugin.** Because every plugin compiles into the single APK (see [`docs/plans/connector-plugins.md`](docs/plans/connector-plugins.md)), an LGPL plugin dep would infect the whole APK. When evaluating a candidate connector library (FinTS client, OFX parser, MT940 parser, per-broker SDK), the SPDX gate is non-negotiable. If a candidate fails the gate, the research plan documents the alternative or the build-it-ourselves cost (this is exactly why FinTS ships as a roll-our-own client rather than wrapping `hbci4java`).
 
