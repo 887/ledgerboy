@@ -29,6 +29,13 @@ val buildDateUtc: String = DateTimeFormatter.ISO_LOCAL_DATE
 
 android {
     namespace = "com.eight87.ledgerboy"
+    lint {
+        // Locale files are partial overrides by design: untranslated keys fall
+        // back to English at runtime (CLAUDE.md, translations workflow). Each
+        // locale is translated user + Claude with per-entry review, never
+        // machine-filled just to satisfy this check.
+        disable += "MissingTranslation"
+    }
     compileSdk {
         version = release(37) {
             minorApiLevel = 2

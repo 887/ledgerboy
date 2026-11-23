@@ -69,6 +69,22 @@ echo "[build-release-apk] running ./gradlew :app:${GRADLE_TASK}..."
 [ -f "${BUILD_APK}" ] || { echo "[build-release-apk] expected APK at ${BUILD_APK} but it's missing" >&2; exit 1; }
 
 cp "${BUILD_APK}" "${OUT_APK}"
+
+# Signing-key pin: debug-signed builds use the machine's ~/.android/debug.keystore,
+# which differs per machine. Publishing an APK signed with a different key breaks
+# in-place updates (Obtainium) for every installed copy, so refuse to publish one.
+# Override with EXPECTED_SIGNING_CERT_SHA256 only when rotating keys on purpose.
+EXPECTED_SIGNING_CERT_SHA256="${EXPECTED_SIGNING_CERT_SHA256:-e79055dd0abdc0efa710597c0c9d4b7f11fc14b325efede54e214f48a7ac7762}"
+if [ "${PUSH_TO_GH}" = true ] && [ "${GRADLE_TASK}" = "assembleDebug" ]; then
+    APKSIGNER="$(ls -d "${ANDROID_HOME}"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -n1)"
+    ACTUAL_CERT="$("${APKSIGNER}" verify --print-certs "${OUT_APK}" | awk '/certificate SHA-256 digest/ {print $NF; exit}')"
+    if [ "${ACTUAL_CERT}" != "${EXPECTED_SIGNING_CERT_SHA256}" ]; then
+        echo "[build-release-apk] ABORT: APK signed with ${ACTUAL_CERT:-<unknown>}," >&2
+        echo "  expected ${EXPECTED_SIGNING_CERT_SHA256}. Publishing it would break updates" >&2
+        echo "  for installed copies. Build on the machine holding the expected debug key." >&2
+        exit 1
+    fi
+fi
 ln -sf "$(basename "${OUT_APK}")" "${OUT_DIR}/latest.apk"
 APK_SIZE="$(du -h "${OUT_APK}" | cut -f1)"
 APK_SHA256="$(sha256sum "${OUT_APK}" | awk '{print $1}')"
@@ -118,7 +134,7 @@ EOF
         git rev-parse -q --verify "refs/tags/${REL_TAG}" >/dev/null || git tag -a "${REL_TAG}" -m "ledgerboy ${TAG}"
         # gh refuses a tag that exists only locally — push it first.
         git push origin "refs/tags/${REL_TAG}"
-        gh release create "${REL_TAG}" "${OUT_APK}" --title "ledgerboy ${VERSION} (${SHA7})" --notes-file "${NOTES}"
+        gh release create "${REL_TAG}" "${OUT_APK}" --verify-tag --title "ledgerboy ${VERSION} (${SHA7})" --notes-file "${NOTES}"
     fi
     rm -f "${NOTES}"
     git push origin "refs/tags/${REL_TAG}" 2>/dev/null || echo "[build-release-apk] tag push skipped (no origin / already pushed)"
